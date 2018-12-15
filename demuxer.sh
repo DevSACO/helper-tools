@@ -1,9 +1,8 @@
 #!/bin/bash
-## Check Zero args
 if [ "$#" -ge "3" ]; then
  if [ "$1" == "-g" ]; then
   if [ ! -x /usr/bin/gallery-dl -a ! -x /usr/bin/youtube-dl ]; then
-   echo "Please install gallery-dl and youtube-dl first"
+   echo "Please install gallery-dl and youtube-dl first"; exit 0
   else
    if [ "$2" != "g" ]; then
     if [ "$2" == "c" ]; then UDO='--recode-video mkv --embed-subs'; fi
@@ -18,118 +17,71 @@ if [ "$#" -ge "3" ]; then
   if [ ! -x /usr/bin/ffmpeg ]; then
    echo "Please install ffmpeg first"
   else
-   if   [ "$#" == "4" ]; then
-    ivf="-i $4"
-    cns=1
-   elif [ "$#" == "5" ]; then
-    ivf="-i $4 -i $5"
-    cns=2
-   elif [ "$#" == "6" ]; then
-    ivf="-i $4 -i $5 -i $6"
-    cns=3
-   elif [ "$#" == "7" ]; then
-    ivf="-i $4 -i $5 -i $6 -i $7"
-    cns=4
-   elif [ "$#" == "8" ]; then
-    ivf="-i $4 -i $5 -i $6 -i $7 -i $8"
-    cns=5
-   elif [ "$#" == "9" ]; then
-    ivf="-i $4 -i $5 -i $6 -i $7 -i $8 -i $9"
-    cns=6
-   fi
-   if   [ "$3" == "a" ]; then
-    echo "Using advanced mapping for streams"
-    aem="-filter_complex '[0:0] [0:1] concat=n=$cns:v=1:a=1 [v] [a]' -map [v] -map [a]"
-   elif [ "$3" == "c" ]; then
-    echo "Setting complex mapping for streams"
-    echo "Video"
-    read -p "Default [0:0] [0:1]: " MIS
-    if [ "$MIS" == "" ]; then MIS='[0:0] [0:1]'; fi
-    echo "Audio"
-    read -p "Default [1]: " MIA
-    if [ "$MIA" == "" -o "$MIA" == "1" ]; then
-     MIA=1
-     FFM='[a]'
-     FSM='-map [a]'
-    elif [ "$MIA" == "2" ]; then
-     FFM='[a1] [a2]'
-     FSM='-map [a1] -map [a2]'
-    elif [ "$MIA" == "3" ]; then
-     FFM='[a1] [a2] [a3]'
-     FSM='-map [a1] -map [a2] -map [a3]'
-    elif [ "$MIA" == "4" ]; then
-     FFM='[a1] [a2] [a3] [a4]'
-     FSM='-map [a1] -map [a2] -map [a3] -map [a4]'
-    elif [ "$MIA" == "5" ]; then
-     FFM='[a1] [a2] [a3] [a4] [a5]'
-     FSM='-map [a1] -map [a2] -map [a3] -map [a4] -map [a5]'
-    elif [ "$MIA" == "6" ]; then
-     FFM='[a1] [a2] [a3] [a4] [a5] [a6]'
-     FSM='-map [a1] -map [a2] -map [a3] -map [a4] -map [a5] -map [a6]'
-    fi
-    aem="-filter_complex '$MIS concat=n=$cns:v=1:a=$MIA [v] $FFM' -map [v] $FSM"
-   fi
-   #-i "concat:F1|F2|F3..." -preset medium -aspect 16:9 -strict -2 -g 40
-   #-probesize 4G -analyzeduration 3600M -crf 28 -aspect 16:9 -g 40
-   #-metadata:s:s:0 title="English"  -map 0:s:0
-   mmo="-vf metadata=mode=delete"
+   # Alternative test options
+   # -metadata:s:s:0 title="English" -i "concat:F1|F2|F3..." -preset medium -aspect 16:9 -strict -2 -g 40 -probesize 4G -analyzeduration 3600M
    hfo='-ignore_unknown -hide_banner -threads 0'
    aop='-ar 48000'
-   cmav='-map 0:a:0 -c:a aac -b:a 320K'
-   cmas='-map 0:a:0 -c:a copy'
-   cmvs='-map 0:v:0 -c:v copy'
-   cmvv='-f matroska -c:v libx265 -b:v 5M -c:a aac -b:a 320k -aspect 16:9 -r 30 -pixel_format yuv444p10 -crf 28 -g 10'
-   cmv='-f mp4 -c:v mpeg4 -b:v 5M -c:a aac -b:a 320k -r 30 -aspect 16:9 -crf 18 -vsync 1'
+   cmav='-c:a ac3 -b:a 320K'
+   cmvv='-crf 20 -f matroska -c:v hevc -b:v 10M'
+   cmv='-f mp4 -c:v mpeg4 -b:v 10M'
    echo "#!/bin/bash" > .demux
+   if [ "$5" != "" ]; then ssl="$5"; fi
    if   [ "$2" == "a" ]; then
     if [ "$3" == "c" ]; then
-     ssc="-af:a:0 'pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
+     ssc="-af 'pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
     elif [ "$3" == "s" ]; then
-     ssc="-af silenceremove=0:0:0:-1:1:-40dB"
-    fi
-    for A in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_space_:g' -e 's:\.\/::g' | grep -v '.demux' | grep -v '.passwd'); do
+     ssc="-af silenceremove=0:0:0:-1:1:-40dB,pan='stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
+    fi; if [ "$4" == "s" ]; then segt='-f segment -segment_time 15'; segf='%04d_'; fi
+    for A in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_space_:g' -e 's:\.\/::g' | grep -v '\.ass' | grep -v '\.demux' | grep -v '\.passwd'); do
+     # Set file name, dir and optional extensions.
      mmc="$(echo $A | sed 's:_space_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed 's:[^\]*/::g')";mmd="$(echo Audio/$A | sed 's:_space_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed "s:/$mmc::")";mmx="$(echo ${mmc%.*})";mkdir -p "$mmd/$mmx"
-     echo "ffmpeg -hide_banner -threads 0 -i \"$(echo $A | sed 's:_space_: :g')\" $mmo $ssc $cmav $aop \"$(echo $mmd/$mmx.m4a | sed 's:_space_: :g')\"" >> .demux
-     if [ "$4" == "s" ]; then
-      echo "ffmpeg -hide_banner -threads 0 -i \"$(echo Audio/${A%.*}.m4a | sed 's:_space_: :g')\" -f segment -segment_time 30 -c copy \"$(echo $mmd/$mmx/%03d_$mmx.m4a | sed 's:_space_: :g')\"" >> .demux
-     fi
-    done
+     # Recursive search
+     for AUDIO in $(ffprobe -v 0 -show_entries stream=index,codec_type:stream_tags=language -of compact "$(echo $A | sed 's:_space_: :g')" | grep 'audio' | sed "s|\|tag:|_space_|;s|[^\]*index=|-map_space_0:|;s|\|codec_type=|_space_-metadata:s:|" | sed "s|audio|a:0|g"); do echo "ffmpeg -hide_banner -threads 0 -i \"$(echo $A | sed 's:_space_: :g')\" $(if [ "$(ffprobe -v 0 -show_entries stream=codec_type -of compact "$(echo $A | sed 's:_space_: :g')" | grep 'video' | sed 's|[^\]*video|vs|')" == "vs" ]; then echo '-vf metadata=mode=delete'; fi) $segt $(echo $AUDIO | sed 's:_space_: :g') $ssc $cmav $aop \"$(echo $mmd/$mmx/$segf$mmx.m4a | sed 's:_space_: :g')\"" | sed 's|  | |g'  >> .demux
+    done; done
    elif [ "$2" == "v" ]; then
-    for V in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_spacer_:g' -e 's:\.\/::g' | grep -v '.demux' | grep -v '.passwd'); do
-     echo "ffmpeg -y $hfo -i \"$(echo $V | sed 's:_spacer_: :g')\" $cmas \"$(echo ${V%.*}.m4a | sed 's:_spacer_: :g')\"
-ffmpeg -y $hfo -i \"$(echo $V | sed 's:_spacer_: :g')\" $cmvs \"$(echo ${V%.*}.mpeg | sed 's:_spacer_: :g')\"
-ffmpeg -y $hfo -i \"$(echo ${V%.*}.mpeg | sed 's:_spacer_: :g')\" -i \"$(echo ${V%.*}.m4a | sed 's:_spacer_: :g')\" $aem $cmvv $aop \"$(echo ${V%.*}.mkv | sed 's:_spacer_: :g')\"
-rm -R \"$(echo ${V%.*}.mpeg | sed 's:_spacer_: :g')\"" >> .demux
-    done
-   elif [ "$2" == "vc" ]; then
-     echo "ffmpeg $hfo $ivf $aem $cmvv $aop \"media.mkv\"" >> .demux
+    x=0; y=0; if [ "$3" == "s" ]; then vsf='-vf scale=-1:480'; else asl="$3"; fi; if [ "$4" == "c" ]; then mmo=",metadata=mode=delete"; else ssl="$4";fi
+    for V in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_spacer_:g' -e 's:\.\/::g' | grep -v '\.ass' | grep -v '\.demux' | grep -v '\.passwd'); do
+     # Set file name, dir and optional extensions.
+     mmc="$(echo $V | sed 's:_spacer_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed 's:[^\]*/::g')";mmd="$(echo Video/$V | sed 's:_spacer_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed "s:/$mmc::")";mmx="$(echo ${mmc%.*})";mkdir -p "$mmd"
+     # Recursive search
+     for VIDEO in $(ffprobe -v 0 -show_entries stream=index,codec_type:stream_tags=language -of compact "$(echo $V | sed 's:_spacer_: :g')" | sed "s|\|tag:|_spacer_|;s|[^\]*index=|-map_spacer_0:|;s|\|codec_type=|_spacer_-metadata:s:|" | sed "s|\-metadata:s:video[^\]*||;s|audio|a:0|g;s|subtitle|s:0|g" | sed "s|a:0 language=und|a:0 language=$asl|;s|s:0 language=und|s:0 language=$ssl|" | sed ':a;N;$!ba;s|\n|_spacer_|g'); do
+     echo "ffmpeg -y $hfo -i \"$(echo $V | sed 's:_spacer_: :g')\" $(if [ -e "$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')" ]; then echo "-i \"$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')\""; fi) $vsf$mmo $(echo $VIDEO | sed 's:_spacer_: :g') $(if [ -e "$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')" ]; then echo '-map 1:0 -metadata:s:s:0 language=spa -disposition:s:0 default'; fi) $cmvv $cmav \"$(echo $mmd/$mmx.mkv | sed 's:_spacer_: :g')\"" | sed 's|  | |g' >> .demux; done; done
    elif [ "$2" == "vd" ]; then
-    vdd=$(echo \'$(pwd)\')
-    $GRC mkdir -p /media/dvd && $GRC mount -o ro /dev/sr0 /media/dvd
+    x=0; vdd=$(echo \'$(pwd)\')
+    sudo mkdir -p /media/dvd && sudo mount -o ro /dev/sr0 /media/dvd
     vds=$(ls /media/dvd | grep "[Vv]")
     V=$(ls -1v /media/dvd/$vds | grep -e ".I" -e ".i" | grep -e ".B" -e ".b" | grep -v "VTS_[0-9][0-9]_[0]" | grep -v "vts_[0-9][0-9]_[0]" | sed ':a;N;$!ba;s/\n/|\/media\/dvd\/'$vds'\//g')
     echo "ffmpeg $hfo -i \"concat:/media/dvd/$vds/$V\" $aem -c:a ac3 raw_audio.mpeg
 ffmpeg $hfo -i \"concat:/media/dvd/$vds/$V\" $cmvs raw_video.mpeg
-ffmpeg $hfo -i raw_audio.mpeg -i raw_video.mpeg $aem $cmv $aop 'rip_movie.mkv'" >> $vdd/.demux && cd $vdd
-    sed -i 's:::' .demux
-    $GRC umount /media/dvd
-   elif [ "$2" == "vl" ]; then
-    for V in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_spacer_:g' -e 's:\.\/::g' | grep -v '.demux' | grep -v '.passwd'); do
-     echo "ffmpeg $hfo -i \"$(echo $V | sed 's:_spacer_: :g')\" $aem $cmv $aop \"$(echo ${V%.*}.mp4 | sed 's:_spacer_: :g')\"" >> .demux
-    done
+ffmpeg $hfo -i raw_audio.mpeg -i raw_video.mpeg $aem $cmv $aop '$((x++)) - $($K_XUDSC).mkv'" >> $vdd/.demux && cd $vdd
+    sudo umount /media/dvd
    fi
    . .demux
-   rm -R .demux 2> /dev/null
+   rm -R .demux
   fi
  fi
 else
- echo "Usage: ctv -g [quality] [slist] | -c [a|v] or [{a|v} {a|c|n} file(s)_in ]
-  -g        # Get video
-              set quality best normal or audio_only {h|n|a}
-              set source list id {o|c|y}
-  -c        # Convert video
-              set multiple audio or video {a|v}
-              set mode Advanced/Complex/Normal(default) {a|c|n}
-              set in-files (normal mode only) file1.ext file2.ext ...
-              converter uses files output name"
+ echo "Usage: ctv option type mode [extra options] [language]
+  Options
+   -g			# Get media filelist, use -g name, filelist is [lst-(name).txt]
+   -c			# Convert media
+  Type
+   a			# Converts massive audio files, all audio streams in file
+    Mode
+     c			# Converts 5.1 to stereo
+     s			# Silence remove and converts 5.1 to stereo
+      Extra options
+       s		# Split into (time)s multiple files. Changes into script in -segment_time option. Default 60s
+       (language)	# Only if streams have metadata language=und  (Debug)
+
+   v			# Converts massive video files, all audio, video and subtitle streams in file
+    Mode
+     s			# Scale resolution. Changes into script in -vf scale option. Default 720p
+      Extra options
+       s		# Split into (time)s multiple files. Changes into script in -segment_time option. Default 60s
+        c		# Clear metadata in video stream. (in some converted files maybe don't work/needed)
+       (language)	# Only if streams have metadata language=und  (Debug)
+
+   vd			# RIP dvd's (bugs)
+"
 fi
