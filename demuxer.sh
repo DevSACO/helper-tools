@@ -27,25 +27,28 @@ if [ "$#" -ge "3" ]; then
    echo "#!/bin/bash" > .demux
    if [ "$5" != "" ]; then ssl="$5"; fi
    if   [ "$2" == "a" ]; then
-    if [ "$3" == "c" ]; then
-     ssc="-af 'pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
-    elif [ "$3" == "s" ]; then
-     ssc="-af silenceremove=0:0:0:-1:1:-40dB,pan='stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
-    fi; if [ "$4" == "s" ]; then segt='-f segment -segment_time 15'; segf='%04d_'; fi
-    for A in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_space_:g' -e 's:\.\/::g' | grep -v '\.ass' | grep -v '\.demux' | grep -v '\.passwd'); do
+    if [ "$3" == "c" ]; then ssc="-af 'pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
+    elif [ "$3" == "d" ]; then cmav='-c:a copy'; aop=""
+    elif [ "$3" == "s" ]; then ssc="-af silenceremove=0:0:0:-1:1:-60dB,pan='stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
+    fi; if [ "$4" == "s" ]; then segt='-f segment -segment_time 75'; segf='%04d_'; else asl="$4"; fi
+    for A in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_space_:g' -e 's:\.\/::g' | grep -v '\.tar\.' | grep -v '\.ass' | grep -v '\.demux' | grep -v '\.passwd'); do
      # Set file name, dir and optional extensions.
-     mmc="$(echo $A | sed 's:_space_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed 's:[^\]*/::g')";mmd="$(echo Audio/$A | sed 's:_space_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed "s:/$mmc::")";mmx="$(echo ${mmc%.*})";mkdir -p "$mmd/$mmx"
+     mmc="$(echo $A | sed 's:_space_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed 's:[^\]*/::g')";mmd="$(echo Audio/$A | sed 's:_space_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed "s:/$mmc::")"; mmx="$(echo ${mmc%.*})"
      # Recursive search
-     for AUDIO in $(ffprobe -v 0 -show_entries stream=index,codec_type:stream_tags=language -of compact "$(echo $A | sed 's:_space_: :g')" | grep 'audio' | sed "s|\|tag:|_space_|;s|[^\]*index=|-map_space_0:|;s|\|codec_type=|_space_-metadata:s:|" | sed "s|audio|a:0|g"); do echo "ffmpeg -hide_banner -threads 0 -i \"$(echo $A | sed 's:_space_: :g')\" $(if [ "$(ffprobe -v 0 -show_entries stream=codec_type -of compact "$(echo $A | sed 's:_space_: :g')" | grep 'video' | sed 's|[^\]*video|vs|')" == "vs" ]; then echo '-vf metadata=mode=delete'; fi) $segt $(echo $AUDIO | sed 's:_space_: :g') $ssc $cmav $aop \"$(echo $mmd/$mmx/$segf$mmx.m4a | sed 's:_space_: :g')\"" | sed 's|  | |g'  >> .demux
-    done; done
+     if [ "$(ffprobe -v 0 -show_entries stream=codec_type -of compact "$(echo $A | sed 's:_space_: :g')" | grep 'audio' | sed 's|[^\]*audio|sa|')" == "sa" ]; then for AUDIO in $(ffprobe -v 0 -show_entries stream=index,codec_type:stream_tags=language -of compact "$(echo $A | sed 's:_space_: :g')" | grep 'audio' | sed "s|\|tag:|_space_|;s|[^\]*index=|-map_space_0:|;s|\|codec_type=|_space_-metadata:s:|" | sed "s|audio|a:0|g"); do echo "ffmpeg -hide_banner -threads 0 -i \"$(echo $A | sed 's:_space_: :g')\" $(if [ "$(ffprobe -v 0 -show_entries stream=codec_type -of compact "$(echo $A | sed 's:_space_: :g')" | grep 'video' | sed 's|[^\]*video|vs|')" == "vs" ]; then echo '-vf metadata=mode=delete'; fi) $segt $(echo $AUDIO | sed 's:_space_: :g') $ssc $cmav $aop \"$(echo $mmd$(if [ "$4" == "s" ]; then mkdir -p "$mmd/$mmx"; echo "/$mmx"; else mkdir -p "$mmd"; fi )/$segf$mmx.m4a | sed 's:_space_: :g')\"" | sed "s|a:0 language=und|a:0 language=$asl|;s|s:0 language=und|s:0 language=$ssl|;s|  | |g;s|\-metadata:s:a:0 \-|\-|g"  >> .demux; done; fi; printf '.'; done ; printf "\n"
    elif [ "$2" == "v" ]; then
-    x=0; y=0; if [ "$3" == "s" ]; then vsf='-vf scale=-1:480'; else asl="$3"; fi; if [ "$4" == "c" ]; then mmo=",metadata=mode=delete"; else ssl="$4";fi
-    for V in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_spacer_:g' -e 's:\.\/::g' | grep -v '\.ass' | grep -v '\.demux' | grep -v '\.passwd'); do
+        x=0; y=0
+    if [ "$3" == "s" ]; then vfm='-vf scale=-1:720'; if [ "$4" == "m" ]; then vfs=",metadata=mode=delete"; fi
+    elif [ "$3" == "m" ]; then vfm="-vf metadata=mode=delete"; if [ "$4" == "s" ]; then vfs=',scale=-1:720'; fi
+    elif [ "$3" == "d" ]; then cmvv='-c:v copy'; cmav='-c:a copy'; aop=""
+    else asl="$3"; ssl="$4"
+    fi
+    for V in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_spacer_:g' -e 's:\.\/::g' | grep -v '\.tar\.' | grep -v '\.ass' | grep -v '\.demux' | grep -v '\.passwd'); do
      # Set file name, dir and optional extensions.
      mmc="$(echo $V | sed 's:_spacer_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed 's:[^\]*/::g')";mmd="$(echo Video/$V | sed 's:_spacer_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed "s:/$mmc::")";mmx="$(echo ${mmc%.*})";mkdir -p "$mmd"
      # Recursive search
-     for VIDEO in $(ffprobe -v 0 -show_entries stream=index,codec_type:stream_tags=language -of compact "$(echo $V | sed 's:_spacer_: :g')" | sed "s|\|tag:|_spacer_|;s|[^\]*index=|-map_spacer_0:|;s|\|codec_type=|_spacer_-metadata:s:|" | sed "s|\-metadata:s:video[^\]*||;s|audio|a:0|g;s|subtitle|s:0|g" | sed "s|a:0 language=und|a:0 language=$asl|;s|s:0 language=und|s:0 language=$ssl|" | sed ':a;N;$!ba;s|\n|_spacer_|g'); do
-     echo "ffmpeg -y $hfo -i \"$(echo $V | sed 's:_spacer_: :g')\" $(if [ -e "$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')" ]; then echo "-i \"$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')\""; fi) $vsf$mmo $(echo $VIDEO | sed 's:_spacer_: :g') $(if [ -e "$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')" ]; then echo '-map 1:0 -metadata:s:s:0 language=spa -disposition:s:0 default'; fi) $cmvv $cmav \"$(echo $mmd/$mmx.mkv | sed 's:_spacer_: :g')\"" | sed 's|  | |g' >> .demux; done; done
+     if [ "$(ffprobe -v 0 -show_entries stream=codec_type -of compact "$(echo $V | sed 's:_space_: :g')" | grep 'video' | sed 's|[^\]*video|sv|')" == "sv" ]; then
+     for VIDEO in $(ffprobe -v 0 -show_entries stream=index,codec_type:stream_tags=language -of compact "$(echo $V | sed 's:_spacer_: :g')" | sed "s|\|tag:|_spacer_|;s|[^\]*index=|-map_spacer_0:|;s|\|codec_type=|_spacer_-metadata:s:|" | sed "s|video|v:0|g;s|audio|a:0|g;s|subtitle|s:0|g" | sed ':a;N;$!ba;s|\n|_spacer_|g'); do echo "ffmpeg -y $hfo -i \"$(echo $V | sed 's:_spacer_: :g')\" $(if [ -e "$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')" ]; then echo "-i \"$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')\""; fi) $vfm$vfs $(echo $VIDEO | sed 's:_spacer_: :g') $(if [ -e "$(echo ${V%.*}$ssl.ass | sed 's:_spacer_: :g')" ]; then echo '-map 1:0 -metadata:s:s:0 language=spa -disposition:s:0 default'; fi) $cmvv $cmav $aop \"$(echo $mmd/$mmx.mkv | sed 's:_spacer_: :g')\"" | sed "s|v:0 language=und|v:0 language=eng|;s|a:0 language=und|a:0 language=$asl|;s|s:0 language=und|s:0 language=$ssl|;s|  | |g;s|\-metadata:s:v:0 \-|\-|g;s|\-metadata:s:a:0 \-|\-|g;s|\-metadata:s:s:0 \-|\-|g;s|language= \-|language=eng \-|" >> .demux; done; fi; printf '.'; done ; printf "\n"
    elif [ "$2" == "vd" ]; then
     x=0; vdd=$(echo \'$(pwd)\')
     sudo mkdir -p /media/dvd && sudo mount -o ro /dev/sr0 /media/dvd
