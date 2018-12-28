@@ -29,8 +29,8 @@ if [ "$#" -ge "3" ]; then
    if   [ "$2" == "a" ]; then
     if [ "$3" == "c" ]; then ssc="-af 'pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
     elif [ "$3" == "d" ]; then cmav='-c:a copy'; aop=""
-    elif [ "$3" == "s" ]; then ssc="-af silenceremove=0:0:0:-1:1:-60dB,pan='stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
-    fi; if [ "$4" == "s" ]; then segt='-f segment -segment_time 75'; segf='%04d_'; else asl="$4"; fi
+    elif [ "$3" == "s" ]; then ssc="-af silenceremove=0:0:0:-1:1:-50dB,pan='stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR'"
+    fi; if [ "$4" == "s" ]; then segt='-f segment -segment_time 60'; segf='%05d_'; else asl="$4"; fi
     for A in $(find -type f | sort | sed -e 's:'\"':'$(echo "\"")$(echo '\\''\"')$(echo "\"")':g' -e 's:'\'':'$(echo "\"")$(echo '\\'"'")$(echo "\"")':g' -e 's: :_space_:g' -e 's:\.\/::g' | grep -v '\.tar\.' | grep -v '\.ass' | grep -v '\.demux' | grep -v '\.passwd'); do
      # Set file name, dir and optional extensions.
      mmc="$(echo $A | sed 's:_space_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed 's:[^\]*/::g')";mmd="$(echo Audio/$A | sed 's:_space_: :g' | sed -e 's|\"||g' -e 's|\\||g' | sed "s:/$mmc::")"; mmx="$(echo ${mmc%.*})"
@@ -76,15 +76,19 @@ else
       Extra options
        s		# Split into (time)s multiple files. Changes into script in -segment_time option. Default 60s
        (language)	# Only if streams have metadata language=und  (Debug)
-
+         ./demuxer.sh -c a c audio_lang
+         ./demuxer.sh -c a s audio_lang
+         ./demuxer.sh -c a c s audio_lang
+         ./demuxer.sh -c a s s audio_lang
    v			# Converts massive video files, all audio, video and subtitle streams in file
     Mode
-     s			# Scale resolution. Changes into script in -vf scale option. Default 720p
+     s			# Scale resolution. Changes into script in -vf scale option. Default 720p (u can use 1080,360, etc.) (Debug 480 and more)
       Extra options
-       s		# Split into (time)s multiple files. Changes into script in -segment_time option. Default 60s
-        c		# Clear metadata in video stream. (in some converted files maybe don't work/needed)
-       (language)	# Only if streams have metadata language=und  (Debug)
-
-   vd			# RIP dvd's (bugs)
-"
+       c		# Clear metadata in video stream. (in some converted files maybe don't work/needed)
+       (language)	# Optional, only works if streams have metadata language=und  (Debug)
+        examples:
+         ./demuxer.sh -c v audio_lang subtitle_lang
+         ./demuxer.sh -c v m audio_lang subtitle_lang
+         ./demuxer.sh -c v s m audio_lang subtitle_lang
+   vd			# RIP dvd's (bugs)"
 fi
