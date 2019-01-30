@@ -32,7 +32,7 @@ if [ "$#" -ge "2" ]; then
    video_args=" -f $v_filter -c:v $v_codec$codec_options -pix_fmt $p_format -g 250 -i_qfactor 0.71 -keyint_min 25 -subq 6 -preset veryslow -b:v $v_bitrate -crf $v_cfr -c:s copy"
    ### End Video container definitions
    ### Start Recusively list of all files in all subdirectories
-   echo "#!/bin/bash" > .remuxer; for M in $(find -type f | sort | grep -v '\.\/Audio' | grep -v '\.\/Data' | grep -v '\.\/Video' | grep -v '\.passwd' | grep -v '\.remuxer' | grep -v '\.reglog' | grep -v "\.ass" | grep -v "\.srt" | sed "s|\./||;s|%|:scp:|;s| |:scs:|g"); do
+   printf "#/bin/bash\n" > .remuxer; printf "Listing\n"; for M in $(find -type f | sort | grep -v '\.\/Audio' | grep -v '\.\/Data' | grep -v '\.\/Video' | grep -v '\.passwd' | grep -v '\.remuxer' | grep -v '\.reglog' | grep -v "\.ass" | grep -v "\.srt" | sed "s|\./||;s|%|:scp:|;s| |:scs:|g"); do
     ## Start sanitize namefiles
     name_m="$(echo $M | sed "s|:scp:|%|g;s|:scs:| |g")";name_r="$(echo $M | sed "s|:scs:| |g")"; name_f="$(echo $name_r | sed "s|[^\]*/||g")"; name_s="${name_f%.*}"; name_dir="$(dirname "$name_r")"; f_ext="$(echo $name_f | sed "s|$name_s||")"; s_name="$(echo $name_s | sed 's|:scp:|%|g')"
     ## End sanitize namefiles
@@ -79,7 +79,7 @@ if [ "$#" -ge "2" ]; then
    ## End a/v media detection
    ### End Recusively list of all files in all subdirectories
    #### Start clear trash, sanitize and start remuxing
-   sed -i "s|\"|$(echo '\\''\"')|g;s|\!|$(echo '\"''\\''\!''\"')|g;s|:scq:|\"|g;s|:scs:| |g;s|:scp:|%|g;s|/\./|/|g;s|A_MTIME|/%05d - |;s|-metadata:s:a:[0-9] stream\|||g;s|-metadata:s:s:[0-9] stream\|||g;s|-metadata:s:v:[0-9] stream\|||g;s| codec_type=audio||g;s| codec_type=subtitle||g;s| codec_type=video||g;s|\=.esLA|\=spa|g" .remuxer; . .remuxer; rm -R .remuxer
+   sed -i "s|\"|$(echo '\\''\"')|g;s|\!|$(echo '\"''\\''\!''\"')|g;s|:scq:|\"|g;s|:scs:| |g;s|:scp:|%|g;s|#/|#!/|;s|/\./|/|g;s|A_MTIME|/%05d - |;s|-metadata:s:a:[0-9] stream\|||g;s|-metadata:s:s:[0-9] stream\|||g;s|-metadata:s:v:[0-9] stream\|||g;s| codec_type=audio||g;s| codec_type=subtitle||g;s| codec_type=video||g;s|, | |;s| ,| |;s|\=.esLA|\=spa|g" .remuxer; printf "Remuxing\n"; . .remuxer; rm -R .remuxer
    #### End clear trash, sanitize and start remuxing script
   fi
  fi
