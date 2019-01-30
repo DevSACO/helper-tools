@@ -2,13 +2,13 @@
 Bash tools for manage massive files, all main dir an subdirectories where executes this tools.
 
 * Features included:
- -- Rename files using [number]_[random_string].[ext]
- -- Move all files into full deep subtree to a new dir
- -- Remux audio/video files into full deep subtree to a new dir using original subtree
+ - Rename files using [number]_[random_string].[ext]
+ - Move all files into full deep subtree to a new dir
+ - Remux audio/video files into full deep subtree to a new dir using original subtree
     (av_dir/av_file.ext) -> (new_dir/av_dir/av_file.ext)
- -- Remux with scale, split and normalize(Beta) options
- -- Extracting compressed files into (Data) dir, use passwords stored in (.passwd) txt file
- -- Extractor helper requires 7z (at the moment the best), and WinRAR (optional if wine are installed), in some cases.
+ - Remux with scale, split and normalize(Beta) options
+ - Extracting compressed files into (Data) dir, use passwords stored in (.passwd) txt file
+ - Extractor helper requires 7z (at the moment the best), and WinRAR (optional if wine are installed), in some cases.
 
 # Installing
 ```
@@ -19,10 +19,11 @@ sudo cp -R helper-tools/remuxer.sh /usr/bin/remuxer; sudo chmod +x remuxer.sh
 
 # Removing
 ```
+sudo rm -R /usr/bin/randx /usr/bin/remuxer
 ```
 # Examples:
 
-./remuxer.sh or script_name if are installed in your root binary executables (/usr/bin|/usr/xbin) \
+## ./remuxer.sh or script_name if are installed in your root binary executables (/usr/bin|/usr/xbin)
 [demuxer script] -g list n	# Get all multimedia links in lst-l.txt \
 [demuxer script] -c v n		# Convert recursively videos in subdirectories to mkv format \
 [demuxer script] -c v d		# Convert recursively videos in subdirectories to mkv format (codec av copy)\
@@ -35,7 +36,7 @@ sudo cp -R helper-tools/remuxer.sh /usr/bin/remuxer; sudo chmod +x remuxer.sh
 [demuxer script] -c a s s	# Convert recursively videos in subdirectories to m4a format and truncate silence and split \
 [demuxer script] -c a c s	# Convert recursively videos in subdirectories to m4a format and convert 5.1 to stereo and split \
  \
-./randx.sh or script_name if are installed in your root binary executables (/usr/bin|/usr/xbin) \
+## ./randx.sh or script_name if are installed in your root binary executables (/usr/bin|/usr/xbin)
 [renamer script] -n e		# Renames recursively files in subdirectories (using original extension) \
 [renamer script] -n c		# Renames recursively files in subdirectories (using generic extension .gextd, pretends change to a random extension in future) \
 [renamer script] -e   #Extract recursively 7z, zip, rar, etc. with password (stored password list in a .passwd file, creates where u run this script) (Debug for massive splitted files) \
