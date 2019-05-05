@@ -49,12 +49,12 @@ if [ "$#" -ge "2" ]; then
     # Start volume normalization detection
     if [ "$5" == "n" ]; then
     audio_mvd="$(ffprobe -v 0 -show_entries stream=index,codec_type -of compact "$name_m" | grep -m 1 'audio' | sed 's|[^\]*index\=|-map 0:|;s|\|co[^\]*||')"
-    volume_dt="$(ffmpeg $head_args -i "$name_m" $audio_mvd -af volumedetect -f null -c:a ac3 -b:a 256k /dev/null 2>&1 | grep 'max_volume' | sed 's| ||g;s|\-||g;s|[^\]*:||')"; if [ ! -z "$volume_dt" ]; then modvol="volume=$volume_dt"; fi; audio_lang="$6"; subtitle_lang="$7"; else audio_lang="$5"; subtitle_lang="$6"; fi
+    volume_dt="$(ffmpeg $head_args -i "$name_m" $audio_mvd -af volumedetect -f null -c:a ac3 -b:a 256k /dev/null 2>&1 | grep 'max_volume' | sed 's| ||g;s|\-||g;s|[^\]*:||')"; if [ ! -z "$volume_dt" ]; then cdl=','; modvol="volume=$volume_dt"; fi; audio_lang="$6"; subtitle_lang="$7"; else audio_lang="$5"; subtitle_lang="$6"; fi
     # End volume normalization detection
     # Start mode definitions
     if [ "$3" == "c" ]; then video_args=' -c:v copy'; audio_args=' -c:a copy '
-    elif [ "$3" == "p" ]; then audio_convert=" -af $audio_stereo,$modvol"
-    elif [ "$3" == "s" ]; then audio_convert=" -af $audio_clean,$audio_stereo,$modvol"
+    elif [ "$3" == "p" ]; then audio_convert=" -af $audio_stereo$cdl$modvol"
+    elif [ "$3" == "s" ]; then audio_convert=" -af $audio_clean,$audio_stereo$cdl$modvol"
     elif [ "$3" == "z" ]; then video_scale=" -vf scale=-1:$video_scale_z$(if [ "$5" == "n" ]; then printf " -af $modvol"; fi)"
     elif [ "$3" == "n" ]; then audio_convert=" -af $modvol" ; fi
     # End mode definitions
