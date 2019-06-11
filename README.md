@@ -13,8 +13,8 @@ Bash tools for manage massive files, all main dir an subdirectories where execut
 ## Installing
 ```
 git clone https://github.com/DevSACO/helper-tools.git
-sudo cp -R helper-tools/randx.sh /usr/bin/randx; sudo chmod +x randx.sh
-sudo cp -R helper-tools/remuxer.sh /usr/bin/remuxer; sudo chmod +x remuxer.sh
+sudo cp -R helper-tools/randx.sh /usr/bin/randx; sudo chmod +x /usr/bin/randx
+sudo cp -R helper-tools/remuxer.sh /usr/bin/remuxer; sudo chmod +x /usr/bin/remuxer
 ```
 
 ## Removing
