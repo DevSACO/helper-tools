@@ -21,7 +21,7 @@ sudo cp -R helper-tools/remuxer.sh /usr/bin/remuxer; sudo chmod +x /usr/bin/remu
 ```
 sudo rm -R /usr/bin/randx /usr/bin/remuxer
 ```
-* Usage: ./remuxer.sh option type mode [] () [language]
+* Usage: ./remuxer.sh [option] [type] [mode] [extra or beta options] [language]
   - ***Options***
   ```
     -g		# Get media from filelist, use -g (name) mode [playlist num start]. file is [(name).ext].
