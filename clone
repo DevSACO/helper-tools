@@ -1,0 +1,78 @@
+### Cloner basic system ###
+###
+### varPath
+mirror_base='/home/www'
+mirrorcache="$mirror_base/.cache"
+mirror_list="$mirror_base/.repo/mirror"
+mirror_logs="$mirrorcache/logs"
+mirror_skel="$mirrorcache/skel"
+mirror_urls="$mirrorcache/urls"
+### varString
+head_string="$(for ((a=0;a<=79;a++)); do printf "#"; done; printf "\n")"
+limit__rate='10M'
+### Body start
+for mirror in $(cat $mirror_list | grep -v 'clean ' | sed 's|[^\]*://||g;s| |:sc:|g;s|/:sc:\.|:sc:|g;s|/:sc:/|:sc:/|g'); do
+ url=$(echo $mirror | sed 's|:sc:[^\]*||'); uri=$(echo $url | sed 's|/[^\]*||'); logs=$(echo $uri | sed 's|\.|-|g')
+ cod=$(echo $mirror | sed "s|$url:sc:||;s|:sc:[^\]*||")
+ ver=$(echo $mirror | sed "s|[^\]*$cod||;s|:sc:||"); if [ "$ver" == "" ]; then ver='/'; fi
+ dis=$(echo /dists/$cod/ | sed "s|/dists///||")
+ isum="$mirror_urls/$logs-InRelease"
+ rsum="$mirror_urls/$logs-Release"
+ echo $head_string
+ echo "SKEL Files from $uri"
+ for component in $(echo $ver | sed 's|:sc:|\n|g'); do
+  if [ ! -e $mirror_skel/$url/$dis/InRelease ]; then echo "Getting Signed List"
+   mkdir -p $mirror_logs $mirror_skel/$url/$dis/$component $mirror_urls
+   wget --limit-rate=$limit__rate -nv -Nx $url/$dis/InRelease -P $mirror_skel -a $mirror_logs/InRelease
+   if [ -e $mirror_skel/$url/$dis/InRelease ]; then
+    sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/InRelease
+    cp -R $mirror_skel/$url/$dis/InRelease $url/$dis/InRelease
+   fi
+  else
+   arch="$(cat $mirror_skel/$url/$dis/InRelease | grep 'Architectures' | sed 's|[^\]*: ||;s| |:sc:|g')"
+   cat $mirror_skel/$url/$dis/InRelease | sed ':a;N;$!ba;s|SIGNATURE[^\]*\n||;s|\n\n|\n|;s|\n |\n|g;s|MD5Sum:\n|\nmd5sum-|;s|SHA1:\n|sha1sum-|;s|SHA256:\n|sha256sum-|;s|SHA512:\n|sha512sum-|;s| [ 0-9]* | '$url/$dis/'|g;s|///|/|g;s|//|/|g' | grep -v ':\|--' > $isum.hashsums
+   printf 'end_tl' >> $isum.hashsums
+   cat $isum.hashsums | sed ':a;N;$!ba;s|\nmd5sum-||;s|sha1sum[^\]*\n||;s|\nend_tl||' > $isum-md5.sum
+   cat $isum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha1sum-||;s|sha256sum[^\]*\n||;s|\nend_tl||' > $isum-sha1.sum
+   cat $isum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha256sum-||;s|sha512sum[^\]*\n||;s|\nend_tl||' > $isum-sha256.sum
+   cat $isum-sha256.sum | sed 's|[^\]* ||' > $isum.list 2>&1; skel_file="$mirror_skel/$(cat $isum.list | grep -m 1 'Packages.gz')"
+   if [ ! -e $skel_file ]; then echo "Getting skel files from $uri"
+    wget -nv -Nxi $isum.list -P $mirror_skel -a $mirror_logs/skel
+    sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/skel
+   fi
+  fi
+  if [ ! -e $mirror_skel/$url/$dis/Release ]; then echo "Getting NonSigned List"
+   mkdir -p $mirror_logs $mirror_skel/$url/$dis/$component $mirror_urls
+   wget --limit-rate=$limit__rate -nv -Nx $url/$dis/Release -P $mirror_skel -a $mirror_logs/Release
+   sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/Release
+   cp -R $mirror_skel/$url/$dis/Release $url/$dis/Release
+  else
+   arch="$(cat $mirror_skel/$url/$dis/Release | grep 'Architectures' | sed 's|[^\]*: ||;s| |:sc:|g')"
+   cat $mirror_skel/$url/$dis/Release | sed ':a;N;$!ba;s|SIGNATURE[^\]*\n||;s|\n\n|\n|;s|\n |\n|g;s|MD5Sum:\n|\nmd5sum-|;s|SHA1:\n|sha1sum-|;s|SHA256:\n|sha256sum-|;s|SHA512:\n|sha512sum-|;s| [ 0-9]* | '$url/$dis/'|g;s|///|/|g;s|//|/|g' | grep -v ':\|--' > $rsum.hashsums
+   printf 'end_tl' >> $rsum.hashsums
+   cat $rsum.hashsums | sed ':a;N;$!ba;s|\nmd5sum-||;s|sha1sum[^\]*\n||;s|\nend_tl||' > $rsum-md5.sum
+   cat $rsum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha1sum-||;s|sha256sum[^\]*\n||;s|\nend_tl||' > $rsum-sha1.sum
+   cat $rsum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha256sum-||;s|sha512sum[^\]*\n||;s|\nend_tl||' > $rsum-sha256.sum
+   cat $rsum-sha256.sum | sed 's|[^\]* ||' > $rsum.list 2>&1; skel_file="$mirror_skel/$(cat $rsum.list | grep -m 1 'Packages.gz')"
+   if [ ! -e $skel_file ]; then echo "Getting skel files from $uri"
+    wget -nv -Nxi $rsum.list -P $mirror_skel -a $mirror_logs/skel
+    sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/skel
+   fi
+  fi
+  if [ ! -e $mirror_skel/$url/$dis/Release.gpg ]; then echo "Getting Sign for lists"
+   mkdir -p $mirror_logs $mirror_skel/$url/$dis/$component $mirror_urls
+   wget --limit-rate=$limit__rate -nv -Nx $url/$dis/Release.gpg -P $mirror_skel -a $mirror_logs/Release
+   sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/Release
+   cp -R $mirror_skel/$url/$dis/Release.gpg $url/$dis/Release.gpg
+  fi
+ done
+ for packages in $(cat $rsum.list | grep 'Packages.gz'); do
+  packages_dir="$(echo $packages | sed 's|Packages\.gz||')"
+  if [ ! -e $mirror_skel/$packages_dir/Packages ]; then 7z -y x $mirror_skel/$packages -o$mirror_skel/$packages_dir > /dev/null 2>&1; fi
+ done
+ for sources in $(cat $rsum.list | grep 'Sources.gz'); do
+  sources_dir="$(echo $sources | sed 's|Sources\.gz||')"
+  if [ ! -e $mirror_skel/$sources_dir/Sources ]; then 7z -y x $mirror_skel/$sources -o$mirror_skel/$sources_dir > /dev/null 2>&1; fi
+ done
+done
+### Body end
