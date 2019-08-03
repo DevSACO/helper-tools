@@ -6,23 +6,25 @@ mirrorcache="$mirror_base/.cache"
 mirror_list="$mirror_base/.repo/mirror"
 mirror_logs="$mirrorcache/logs"
 mirror_skel="$mirrorcache/skel"
+mirror_sums="$mirrorcache/sums"
 mirror_urls="$mirrorcache/urls"
 ### varString
 head_string="$(for ((a=0;a<=79;a++)); do printf "#"; done; printf "\n")"
 limit__rate='10M'
 ### Body start
 for mirror in $(cat $mirror_list | grep -v 'clean ' | sed 's|[^\]*://||g;s| |:sc:|g;s|/:sc:\.|:sc:|g;s|/:sc:/|:sc:/|g'); do
- url=$(echo $mirror | sed 's|:sc:[^\]*||'); uri=$(echo $url | sed 's|/[^\]*||'); logs=$(echo $uri | sed 's|\.|-|g')
+ url=$(echo $mirror | sed 's|:sc:[^\]*||'); uri=$(echo $url | sed 's|/[^\]*||'); lnk=$(echo $uri | sed 's|\.|-|g')
  cod=$(echo $mirror | sed "s|$url:sc:||;s|:sc:[^\]*||")
  ver=$(echo $mirror | sed "s|[^\]*$cod||;s|:sc:||"); if [ "$ver" == "" ]; then ver='/'; fi
  dis=$(echo /dists/$cod/ | sed "s|/dists///||")
- isum="$mirror_urls/$logs-InRelease"
- rsum="$mirror_urls/$logs-Release"
+ isum="$mirror_urls/$uri/$lnk-InRelease"
+ rsum="$mirror_urls/$uri/$lnk-Release"
+ hashsums="$mirror_sums/$uri/$lnk"
  echo $head_string
  echo "SKEL Files from $uri"
  for component in $(echo $ver | sed 's|:sc:|\n|g'); do
   if [ ! -e $mirror_skel/$url/$dis/InRelease ]; then echo "Getting Signed List"
-   mkdir -p $mirror_logs $mirror_skel/$url/$dis/$component $mirror_urls
+   mkdir -p $mirror_logs/$uri $mirror_skel/$url/$dis/$component $mirror_sums/$uri $mirror_urls/$uri
    wget --limit-rate=$limit__rate -nv -Nx $url/$dis/InRelease -P $mirror_skel -a $mirror_logs/InRelease
    if [ -e $mirror_skel/$url/$dis/InRelease ]; then
     sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/InRelease
@@ -42,7 +44,7 @@ for mirror in $(cat $mirror_list | grep -v 'clean ' | sed 's|[^\]*://||g;s| |:sc
    fi
   fi
   if [ ! -e $mirror_skel/$url/$dis/Release ]; then echo "Getting NonSigned List"
-   mkdir -p $mirror_logs $mirror_skel/$url/$dis/$component $mirror_urls
+   mkdir -p $mirror_logs/$uri $mirror_skel/$url/$dis/$component $mirror_sums/$uri $mirror_urls/$uri
    wget --limit-rate=$limit__rate -nv -Nx $url/$dis/Release -P $mirror_skel -a $mirror_logs/Release
    sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/Release
    cp -R $mirror_skel/$url/$dis/Release $url/$dis/Release
@@ -60,15 +62,28 @@ for mirror in $(cat $mirror_list | grep -v 'clean ' | sed 's|[^\]*://||g;s| |:sc
    fi
   fi
   if [ ! -e $mirror_skel/$url/$dis/Release.gpg ]; then echo "Getting Sign for lists"
-   mkdir -p $mirror_logs $mirror_skel/$url/$dis/$component $mirror_urls
+   mkdir -p $mirror_logs/$uri $mirror_skel/$url/$dis/$component $mirror_sums/$uri $mirror_urls/$uri
    wget --limit-rate=$limit__rate -nv -Nx $url/$dis/Release.gpg -P $mirror_skel -a $mirror_logs/Release
    sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/Release
    cp -R $mirror_skel/$url/$dis/Release.gpg $url/$dis/Release.gpg
   fi
  done
  for packages in $(cat $rsum.list | grep 'Packages.gz'); do
-  packages_dir="$(echo $packages | sed 's|Packages\.gz||')"
+  packages_dir="$(echo $packages | sed 's|/Packages\.gz||')"
   if [ ! -e $mirror_skel/$packages_dir/Packages ]; then 7z -y x $mirror_skel/$packages -o$mirror_skel/$packages_dir > /dev/null 2>&1; fi
+  if [ ! -e $hashsums-sha256.xsum ]; then
+   cat $mirror_skel/$packages_dir/Packages | grep 'SHA1\:' | sed 's|SHA1: ||g' >> $hashsums-sha1.xsum
+   cat $mirror_skel/$packages_dir/Packages | grep 'MD5sum\:' | sed 's|MD5sum: ||g' >> $hashsums-md5.xsum
+   cat $mirror_skel/$packages_dir/Packages | grep 'SHA256\:' | sed 's|SHA256: ||g' >> $hashsums-sha256.xsum
+  fi
+  if [ ! -e $hashsums.pkg ]; then
+   cat $mirror_skel/$packages_dir/Packages | grep 'Filename\:' | sed "s|Filename: |$url/|g;s|\./||g" >> $hashsums.pkg
+  fi
+  if [ ! -e $hashsums-sha256.sum ]; then
+   paste -d" " $hashsums-md5.xsum $hashsums.pkg >> $hashsums-md5.sum
+   paste -d" " $hashsums-sha1.xsum $hashsums.pkg >> $hashsums-sha1.sum
+   paste -d" " $hashsums-sha256.xsum $hashsums.pkg >> $hashsums-sha256.sum
+  fi
  done
  for sources in $(cat $rsum.list | grep 'Sources.gz'); do
   sources_dir="$(echo $sources | sed 's|Sources\.gz||')"
