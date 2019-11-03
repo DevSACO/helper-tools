@@ -1,19 +1,16 @@
 #!/bin/bash
 if [ "$#" -ge "2" ]; then
  if [ "$1" == "-g" ]; then
-  if [ ! -x /usr/bin/gallery-dl -o ! -x /usr/bin/youtube-dl ]; then
-   echo "Please install gallery-dl and youtube-dl first"; exit 0
+  if [ ! -x /usr/bin/youtube-dl ]; then
+   echo "Please install youtube-dl first"; exit 0
   else
-   if [ "$2" != "g" ]; then
-    if [ "$2" == "c" -a "$4" != "" ]; then UDO="--sub-lang $4 --recode-video mkv --embed-subs"; else echo "First enter language for embed"; fi
-    if [ "$3" == "a" ]; then PRO='-f bestaudio'; elif [ "$3" == "h" ]; then PRO='-f bestvideo+bestaudio'; fi; if [ $5 -ge 1 ]; then LAN="--playlist-start $5"; fi
+    if [ "$2" == "c" ]; then UDO="--recode-video mkv --embed-subs"; fi
+    if [ "$3" == "a" ]; then PRO='-f bestaudio'; elif [ "$3" == "h" ]; then PRO='-f bestvideo+bestaudio'; fi
     if [ "$3" == "r" ]; then
      echo "Getting VInfo"; youtube-dl -F -a lst-$2.txt >> .dlf 2>&1
      cat .dlf | grep -v 'hardsub' | grep 'x720' | sed 's|  [^\]*||' | sort | sed ':a;N;$!ba;s|\n|/|g' >> .formats; rm -R .dlf > /dev/null 2>&1
      youtube-dl -f $(cat .formats) $PRO $LAN $UDO -a lst-$2.txt
     else youtube-dl $PRO $LAN $UDO -a lst-$2.txt; fi
-   else	 gallery-dl --no-part -i data
-   fi
   fi
  elif [ "$1" == "-c" ]; then
   if [ ! -x /usr/bin/ffmpeg ]; then echo "Please install ffmpeg first"
@@ -26,12 +23,12 @@ if [ "$#" -ge "2" ]; then
    ### Start Audio container definitions
    ### End Audio container definitions
    ### Start Video container definitions
-   if [ "$4" == "mp4" ]; then v_filter='mp4'; v_codec='libx264'; codec_options=' -b_strategy 1 -me_method hex -me_range 16 -partitions all -sc_threshold 40 '; p_format='yuvj444p'; v_bitrate='1M'; v_cfr='28'; e_out='mp4'; fi
-   if [ "$4" == "mkv" ]; then v_filter='matroska'; v_codec='hevc'; p_format='yuv444p10le'; v_bitrate='1M'; v_cfr='20'; e_out='mkv'; fi
+   if [ "$4" == "mp4" ]; then v_filter='mp4'; v_codec='libx264'; e_out='mp4'; audio_codec='-c:a mp3'; fi
+   if [ "$4" == "mkv" ]; then v_filter='matroska'; v_codec='hevc'; e_out='mkv'; audio_codec='-c:a ac3'; fi
    if [ "$4" == "mp3" ]; then audio_codec='-c:a mp3'; audio_ext='mp3'; fi
    if [ "$4" == "m4a" ]; then audio_codec='-c:a ac3'; audio_ext='m4a'; fi
    audio_args=" $audio_codec -b:a 320K -ar 48000 "
-   video_args=" -f $v_filter -c:v $v_codec$codec_options -pix_fmt $p_format -g 250 -i_qfactor 0.71 -keyint_min 25 -subq 6 -preset veryslow -b:v $v_bitrate -crf $v_cfr -c:s copy"
+   video_args=" -f $v_filter -c:v $v_codec -preset ultrafast -b:v 1M -crf 30 -c:s copy"
    ### End Video container definitions
    ### Start Recusively list of all files in all subdirectories
    printf "#/bin/bash\n" > .remuxer; printf "Listing\n"; for M in $(find -type f | sort | grep -v '\.\/Audio' | grep -v '\.\/Data' | grep -v '\.\/Video' | grep -v '\.passwd' | grep -v '\.remuxer' | grep -v '\.reglog' | grep -v "\.ass" | grep -v "\.srt" | sed "s|\./||;s|%|:scp:|;s| |:scs:|g"); do
@@ -58,7 +55,7 @@ if [ "$#" -ge "2" ]; then
     elif [ "$3" == "p" ]; then audio_convert=" -af $audio_stereo$dlms$modvol"
     elif [ "$3" == "s" ]; then audio_convert=" -af $audio_clean,$audio_stereo$dlms$modvol"
     elif [ "$3" == "z" ]; then video_scale=" -vf scale=-1:$video_scale_z$(if [ "$5" == "n" ]; then printf " -af $modvol"; fi)"
-    elif [ "$3" == "n" ]; then audio_convert=" -af $modvol" ; fi
+    elif [ "$3" == "n" ]; then if [ "$volume_dt" == "" ]; then audio_convert=''; else audio_convert=" -af $modvol"; fi ; fi
     # End mode definitions
     # Start helper tool | metadata mapping | remuxer end script
     printf "printf '-'; ffmpeg -y $head_args -i :scq:$name_r:scq:"
@@ -86,7 +83,7 @@ if [ "$#" -ge "2" ]; then
   fi; printf "\n"
  fi
 else
- echo "Usage: ./remuxer.sh option type mode media_type [extra options] [language]
+ echo "Usage: script option type mode media_type [extra options] [language]
   * Options
    -g			# Get media from filelist, use -g (name) mode [playlist num start]. file is [(name).ext].
    -c			# Convert media files.
