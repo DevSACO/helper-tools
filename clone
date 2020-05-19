@@ -1,93 +1,86 @@
 ### Cloner basic system ###
 ###
 ### varPath
-mirror_base='/home/www'
+mirror_base='/var/www'
 mirrorcache="$mirror_base/.cache"
-mirror_list="$mirror_base/.repo/mirror"
+mirror_list="$mirror_base/.repo/mirror.list"
 mirror_logs="$mirrorcache/logs"
 mirror_skel="$mirrorcache/skel"
 mirror_sums="$mirrorcache/sums"
 mirror_urls="$mirrorcache/urls"
 ### varString
 head_string="$(for ((a=0;a<=79;a++)); do printf "#"; done; printf "\n")"
-limit__rate='10M'
+limit_rate='10M'
 ### Body start
 for mirror in $(cat $mirror_list | grep -v 'clean ' | sed 's|[^\]*://||g;s| |:sc:|g;s|/:sc:\.|:sc:|g;s|/:sc:/|:sc:/|g'); do
- url=$(echo $mirror | sed 's|:sc:[^\]*||'); uri=$(echo $url | sed 's|/[^\]*||'); lnk=$(echo $uri | sed 's|\.|-|g')
- cod=$(echo $mirror | sed "s|$url:sc:||;s|:sc:[^\]*||")
- ver=$(echo $mirror | sed "s|[^\]*$cod||;s|:sc:||"); if [ "$ver" == "" ]; then ver='/'; fi
- dis=$(echo /dists/$cod/ | sed "s|/dists///||")
- isum="$mirror_urls/$uri/$lnk-InRelease"
- rsum="$mirror_urls/$uri/$lnk-Release"
- hashsums="$mirror_sums/$uri/$lnk"
+ wurl=$(echo $mirror | sed 's|:sc:[^\]*||')
+ url=$(echo $wurl | sed 's|/[^\]*||')
+ dest=$(echo $url | sed 's|\.|-|g')
+ code=$(echo $mirror | sed "s|$wurl:sc:||;s|:sc:[^\]*||;s|\./|/|")
+ vers=$(echo $mirror | sed "s|[^\]*$code||;s|:sc:||"); if [ "$vers" == "" ]; then vers='/'; fi
+ dist=$(echo dists/$code | sed "s|dists//||")
+ isum="$mirror_urls/$url/$dest-InRelease"
+ rsum="$mirror_urls/$url/$dest-Release"
+ hsum="$mirror_sums/$url/$dest"
  echo $head_string
- echo "SKEL Files from $uri"
- for component in $(echo $ver | sed 's|:sc:|\n|g'); do
-  if [ ! -e $mirror_skel/$url/$dis/InRelease ]; then echo "Getting Signed List"
-   mkdir -p $mirror_logs/$uri $mirror_skel/$url/$dis/$component $mirror_sums/$uri $mirror_urls/$uri
-   wget --limit-rate=$limit__rate -nv -Nx $url/$dis/InRelease -P $mirror_skel -a $mirror_logs/InRelease
-   if [ -e $mirror_skel/$url/$dis/InRelease ]; then
-    sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/InRelease
-    cp -R $mirror_skel/$url/$dis/InRelease $url/$dis/InRelease
+ echo "SKEL from $url $code"
+  for component in $(echo $vers | sed 's|:sc:|\n|g'); do
+   if [ ! -e $mirror_skel/$wurl/$dist/InRelease -o ! -e $mirror_skel/$wurl/$dist/Release ]; then
+   echo "Getting base list"
+   mkdir -p $mirror_logs/$url $mirror_skel/$wurl/$dist/$component $mirror_sums/$url $mirror_urls/$url $wurl/$dist/$component
+   wget --limit-rate=$limit_rate -nv -Nx $wurl/$dist/InRelease -P $mirror_skel -a $mirror_logs/InRelease
+   wget --limit-rate=$limit_rate -nv -Nx $wurl/$dist/Release -P $mirror_skel -a $mirror_logs/Release
+   wget --limit-rate=$limit_rate -nv -Nx $wurl/$dist/Release.gpg -P $mirror_skel -a $mirror_logs/Release
+    if [ -e $mirror_skel/$wurl/$dist/InRelease ]; then sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/InRelease
+     cp -R $mirror_skel/$wurl/$dist/InRelease $wurl/$dist/InRelease
+     cat $wurl/$dist/InRelease | sed ':a;N;$!ba;s|SIGNATURE[^\]*\n||;s|\n\n|\n|;s|\n |\n|g;s|MD5Sum:\n|\nmd5sum-|;s|SHA1:\n|sha1sum-|;s|SHA256:\n|sha256sum-|;s|SHA512:\n|sha512sum-|;s| [ 0-9]* | '$wurl/$dist/'|g;s|///|/|g;s|//|/|g' | grep -v ':\|--' > $hsum.hashsums
+     printf 'end_tl' >> $hsum.hashsums
+     cat $hsum.hashsums | sed ':a;N;$!ba;s|\nmd5sum-||;s|sha1sum[^\]*\n||;s|\nend_tl||' > $hsum-md5.sum
+     cat $hsum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha1sum-||;s|sha256sum[^\]*\n||;s|\nend_tl||' > $hsum-sha1.sum
+     cat $hsum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha256sum-||;s|sha512sum[^\]*\n||;s|\nend_tl||' > $hsum-sha256.sum
+     cat $hsum-md5.sum | sed 's|[^\]* ||' > $isum.list
+    fi
+    if [ -e $mirror_skel/$wurl/$dist/Release ]; then sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/Release
+     cp -R $mirror_skel/$wurl/$dist/Release $wurl/$dist/Release
+     cat $wurl/$dist/Release | sed ':a;N;$!ba;s|SIGNATURE[^\]*\n||;s|\n\n|\n|;s|\n |\n|g;s|MD5Sum:\n|\nmd5sum-|;s|SHA1:\n|sha1sum-|;s|SHA256:\n|sha256sum-|;s|SHA512:\n|sha512sum-|;s| [ 0-9]* | '$wurl/$dist/'|g;s|///|/|g;s|//|/|g' | grep -v ':\|--' > $hsum.hashsums
+     printf 'end_tl' >> $hsum.hashsums
+     cat $hsum.hashsums | sed ':a;N;$!ba;s|\nmd5sum-||;s|sha1sum[^\]*\n||;s|\nend_tl||' > $hsum-md5.sum
+     cat $hsum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha1sum-||;s|sha256sum[^\]*\n||;s|\nend_tl||' > $hsum-sha1.sum
+     cat $hsum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha256sum-||;s|sha512sum[^\]*\n||;s|\nend_tl||' > $hsum-sha256.sum
+     cat $hsum-md5.sum | sed 's|[^\]* ||' > $rsum.list
+    fi
+    if [ -e $mirror_skel/$wurl/$dist/Release.gpg ]; then sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/Release
+     cp -R $mirror_skel/$wurl/$dist/Release.gpg $wurl/$dist/Release.gpg
+    fi
    fi
-  else
-   arch="$(cat $mirror_skel/$url/$dis/InRelease | grep 'Architectures' | sed 's|[^\]*: ||;s| |:sc:|g')"
-   cat $mirror_skel/$url/$dis/InRelease | sed ':a;N;$!ba;s|SIGNATURE[^\]*\n||;s|\n\n|\n|;s|\n |\n|g;s|MD5Sum:\n|\nmd5sum-|;s|SHA1:\n|sha1sum-|;s|SHA256:\n|sha256sum-|;s|SHA512:\n|sha512sum-|;s| [ 0-9]* | '$url/$dis/'|g;s|///|/|g;s|//|/|g' | grep -v ':\|--' > $isum.hashsums
-   printf 'end_tl' >> $isum.hashsums
-   cat $isum.hashsums | sed ':a;N;$!ba;s|\nmd5sum-||;s|sha1sum[^\]*\n||;s|\nend_tl||' > $isum-md5.sum
-   cat $isum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha1sum-||;s|sha256sum[^\]*\n||;s|\nend_tl||' > $isum-sha1.sum
-   cat $isum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha256sum-||;s|sha512sum[^\]*\n||;s|\nend_tl||' > $isum-sha256.sum
-   cat $isum-sha256.sum | sed 's|[^\]* ||' > $isum.list 2>&1; skel_file="$mirror_skel/$(cat $isum.list | grep -m 1 'Packages.gz')"
-   if [ ! -e $skel_file ]; then echo "Getting skel files from $uri"
-    wget -nv -Nxi $isum.list -P $mirror_skel -a $mirror_logs/skel
-    sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/skel
+  done
+   if [ -e $isum.list ]; then skel_file="$mirror_skel/$(cat $isum.list | grep -m 1 'Release')"
+   else skel_file="$mirror_skel/$(cat $rsum.list | grep -m 1 'Release')"; fi
+   if [ ! -e $skel_file ]; then echo "Getting skel files from $url"
+    if [ -e $isum.list ]; then wget --limit-rate=$limit_rate -nv -Nxi $isum.list -P $mirror_skel -a $mirror_logs/$url/skel; sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/$url/skel
+    else wget --limit-rate=$limit_rate -nv -Nxi $rsum.list -P $mirror_skel -a $mirror_logs/$url/skel; sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/$url/skel; fi
    fi
-  fi
-  if [ ! -e $mirror_skel/$url/$dis/Release ]; then echo "Getting NonSigned List"
-   mkdir -p $mirror_logs/$uri $mirror_skel/$url/$dis/$component $mirror_sums/$uri $mirror_urls/$uri
-   wget --limit-rate=$limit__rate -nv -Nx $url/$dis/Release -P $mirror_skel -a $mirror_logs/Release
-   sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/Release
-   cp -R $mirror_skel/$url/$dis/Release $url/$dis/Release
-  else
-   arch="$(cat $mirror_skel/$url/$dis/Release | grep 'Architectures' | sed 's|[^\]*: ||;s| |:sc:|g')"
-   cat $mirror_skel/$url/$dis/Release | sed ':a;N;$!ba;s|SIGNATURE[^\]*\n||;s|\n\n|\n|;s|\n |\n|g;s|MD5Sum:\n|\nmd5sum-|;s|SHA1:\n|sha1sum-|;s|SHA256:\n|sha256sum-|;s|SHA512:\n|sha512sum-|;s| [ 0-9]* | '$url/$dis/'|g;s|///|/|g;s|//|/|g' | grep -v ':\|--' > $rsum.hashsums
-   printf 'end_tl' >> $rsum.hashsums
-   cat $rsum.hashsums | sed ':a;N;$!ba;s|\nmd5sum-||;s|sha1sum[^\]*\n||;s|\nend_tl||' > $rsum-md5.sum
-   cat $rsum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha1sum-||;s|sha256sum[^\]*\n||;s|\nend_tl||' > $rsum-sha1.sum
-   cat $rsum.hashsums | sed ':a;N;$!ba;s|\n[^\]*sha256sum-||;s|sha512sum[^\]*\n||;s|\nend_tl||' > $rsum-sha256.sum
-   cat $rsum-sha256.sum | sed 's|[^\]* ||' > $rsum.list 2>&1; skel_file="$mirror_skel/$(cat $rsum.list | grep -m 1 'Packages.gz')"
-   if [ ! -e $skel_file ]; then echo "Getting skel files from $uri"
-    wget -nv -Nxi $rsum.list -P $mirror_skel -a $mirror_logs/skel
-    sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/skel
+  if [ -e $isum.list ]; then list=$isum; else list=$rsum; fi
+  for packages in $(cat $list.list | grep 'Packages.gz'); do
+   packages_dir="$(echo $packages | sed 's|/Packages\.gz||')"
+   if [ ! -e $mirror_skel/$packages_dir/Packages ]; then 7z -y x $mirror_skel/$packages -o$mirror_skel/$packages_dir > /dev/null 2>&1; fi
+   if [ ! -e $hsum-sha256.xsum ]; then
+    cat $mirror_skel/$packages_dir/Packages | grep 'SHA1\:' | sed 's|SHA1: ||g' >> $hsum-sha1.xsum
+    cat $mirror_skel/$packages_dir/Packages | grep 'MD5sum\:' | sed 's|MD5sum: ||g' >> $hsum-md5.xsum
+    cat $mirror_skel/$packages_dir/Packages | grep 'SHA256\:' | sed 's|SHA256: ||g' >> $hsum-sha256.xsum
    fi
-  fi
-  if [ ! -e $mirror_skel/$url/$dis/Release.gpg ]; then echo "Getting Sign for lists"
-   mkdir -p $mirror_logs/$uri $mirror_skel/$url/$dis/$component $mirror_sums/$uri $mirror_urls/$uri
-   wget --limit-rate=$limit__rate -nv -Nx $url/$dis/Release.gpg -P $mirror_skel -a $mirror_logs/Release
-   sed -i 's|[^\]*\-> ||g;s|:||g' $mirror_logs/Release
-   cp -R $mirror_skel/$url/$dis/Release.gpg $url/$dis/Release.gpg
-  fi
- done
- for packages in $(cat $rsum.list | grep 'Packages.gz'); do
-  packages_dir="$(echo $packages | sed 's|/Packages\.gz||')"
-  if [ ! -e $mirror_skel/$packages_dir/Packages ]; then 7z -y x $mirror_skel/$packages -o$mirror_skel/$packages_dir > /dev/null 2>&1; fi
-  if [ ! -e $hashsums-sha256.xsum ]; then
-   cat $mirror_skel/$packages_dir/Packages | grep 'SHA1\:' | sed 's|SHA1: ||g' >> $hashsums-sha1.xsum
-   cat $mirror_skel/$packages_dir/Packages | grep 'MD5sum\:' | sed 's|MD5sum: ||g' >> $hashsums-md5.xsum
-   cat $mirror_skel/$packages_dir/Packages | grep 'SHA256\:' | sed 's|SHA256: ||g' >> $hashsums-sha256.xsum
-  fi
-  if [ ! -e $hashsums.pkg ]; then
-   cat $mirror_skel/$packages_dir/Packages | grep 'Filename\:' | sed "s|Filename: |$url/|g;s|\./||g" >> $hashsums.pkg
-  fi
-  if [ ! -e $hashsums-sha256.sum ]; then
-   paste -d" " $hashsums-md5.xsum $hashsums.pkg >> $hashsums-md5.sum
-   paste -d" " $hashsums-sha1.xsum $hashsums.pkg >> $hashsums-sha1.sum
-   paste -d" " $hashsums-sha256.xsum $hashsums.pkg >> $hashsums-sha256.sum
-  fi
- done
- for sources in $(cat $rsum.list | grep 'Sources.gz'); do
-  sources_dir="$(echo $sources | sed 's|Sources\.gz||')"
-  if [ ! -e $mirror_skel/$sources_dir/Sources ]; then 7z -y x $mirror_skel/$sources -o$mirror_skel/$sources_dir > /dev/null 2>&1; fi
- done
+   if [ ! -e $list.pkg ]; then
+    cat $mirror_skel/$packages_dir/Packages | grep 'Filename\:' | sed "s|Filename: |$url/|g;s|\./||g" >> $list.pkg
+   fi
+   if [ ! -e $hsum-md5.sum ]; then
+    paste -d" " $hsum-md5.xsum $list.pkg >> $hsum-md5.sum
+    paste -d" " $hsum-sha1.xsum $list.pkg >> $hsum-sha1.sum
+    paste -d" " $hsum-sha256.xsum $list.pkg >> $hsum-sha256.sum
+   fi
+  #echo $packages_dir
+  done
+  for sources in $(cat $list.list | grep 'Sources.gz'); do
+   sources_dir="$(echo $sources | sed 's|/Sources\.gz||')"
+   if [ ! -e $mirror_skel/$sources_dir/Sources ]; then 7z -y x $mirror_skel/$sources -o$mirror_skel/$sources_dir > /dev/null 2>&1; fi
+  done
 done
-### Body end
