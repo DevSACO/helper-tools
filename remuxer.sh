@@ -4,13 +4,15 @@ if [ "$#" -ge "2" ]; then
   if [ ! -x /usr/bin/youtube-dl ]; then
    echo "Please install youtube-dl first"; exit 0
   else
-    if [ "$2" == "c" ]; then UDO="--recode-video mkv --embed-subs"; fi
-    if [ "$3" == "a" ]; then PRO='-f bestaudio'; elif [ "$3" == "h" ]; then PRO='-f bestvideo+bestaudio'; fi
-    if [ "$3" == "r" ]; then
+   if [ "$2" != "g" ]; then
+    if [ "$2" == "c" ]; then UDO="--recode-video mkv --embed-subs"; if ["$4" != "" ]; then SUDA="--sub-lang $4"; else echo "First enter language for embed"; fi; fi
+    if [ "$3" == "a" ]; then PRRO='-f bestaudio'; elif [ "$3" == "h" ]; then PRRO='-f bestvideo+bestaudio'; fi; if [ "$5" != "" ]; then LAN="--playlist-start $5"; fi
+    if [ "$3" == "sd" ]; then
      echo "Getting VInfo"; youtube-dl -F -a lst-$2.txt >> .dlf 2>&1
      cat .dlf | grep -v 'hardsub' | grep 'x720' | sed 's|  [^\]*||' | sort | sed ':a;N;$!ba;s|\n|/|g' >> .formats; rm -R .dlf > /dev/null 2>&1
-     youtube-dl -f $(cat .formats) $PRO $LAN $UDO -a lst-$2.txt
-    else youtube-dl $PRO $LAN $UDO -a lst-$2.txt; fi
+     youtube-dl -f $(cat .formats) $PRRO $LAN $UDO $SUDA -a lst-$2.txt
+    else youtube-dl $PRRO $LAN $UDO $SUDA -a lst-$2.txt; fi
+   fi
   fi
  elif [ "$1" == "-c" ]; then
   if [ ! -x /usr/bin/ffmpeg ]; then echo "Please install ffmpeg first"
@@ -46,16 +48,17 @@ if [ "$#" -ge "2" ]; then
     if [ "$4" == "s" ]; then split_args=" -f segment -segment_time $segment_seconds"; splits='A_MTIME'; mkdir -p "Audio/$name_dir/$s_name" "Video/$name_dir/$s_name"; audio_lang="$5"; subtitle_lang="$6"; else audio_lang="$4"; subtitle_lang="$5"; mkdir -p "Audio/$name_dir" "Video/$name_dir"; fi
     # End split definitions
     # Start volume normalization detection
-    if [ "$5" == "n" ]; then
+    if [ "$3" == "n" ]; then
     audio_mvd="$(ffprobe -v 0 -show_entries stream=index,codec_type -of compact "$name_m" | grep -m 1 'audio' | sed 's|[^\]*index\=|-map 0:|;s|\|co[^\]*||')"
-    volume_dt="$(ffmpeg $head_args -i "$name_m" $audio_mvd -af volumedetect -f null -c:a flac /dev/null 2>&1 | grep 'max_volume' | sed 's| ||g;s|\-||g;s|[^\]*:||')"; if [ ! -z "$volume_dt" ]; then dlms=','; modvol="volume=$volume_dt"; fi; audio_lang="$6"; subtitle_lang="$7"; else audio_lang="$5"; subtitle_lang="$6"; fi
+    volume_dt="$(ffmpeg $head_args -i "$name_m" $audio_mvd -af volumedetect -f null -c:a flac /dev/null 2>&1 | grep 'max_volume' | sed 's| ||g;s|\-||g;s|[^\]*:||')"
+    if [ ! -z "$volume_dt" ]; then dlms=','; modvol="volume=$volume_dt"; fi; audio_lang="$6"; subtitle_lang="$7"; else audio_lang="$5"; subtitle_lang="$6"; fi
     # End volume normalization detection
     # Start mode definitions
     if [ "$3" == "c" ]; then video_args=' -c:v copy'; audio_args=' -c:a copy '
     elif [ "$3" == "p" ]; then audio_convert=" -af $audio_stereo$dlms$modvol"
     elif [ "$3" == "s" ]; then audio_convert=" -af $audio_clean,$audio_stereo$dlms$modvol"
-    elif [ "$3" == "z" ]; then video_scale=" -vf scale=-1:$video_scale_z$(if [ "$5" == "n" ]; then printf " -af $modvol"; fi)"
-    elif [ "$3" == "n" ]; then if [ "$volume_dt" == "" ]; then audio_convert=''; else audio_convert=" -af $modvol"; fi ; fi
+    elif [ "$3" == "z" ]; then video_scale=" -vf scale=-1:$video_scale_z"
+    elif [ "$3" == "n" ]; then audio_convert=" -af $modvol"; else audio_convert=""; fi
     # End mode definitions
     # Start helper tool | metadata mapping | remuxer end script
     printf "printf '-'; ffmpeg -y $head_args -i :scq:$name_r:scq:"
