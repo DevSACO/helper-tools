@@ -5,7 +5,7 @@ if [ "$#" -ge "2" ]; then
    echo "Please install youtube-dl first"; exit 0
   else
    if [ "$2" != "g" ]; then
-    if [ "$2" == "c" ]; then UDO="--recode-video mkv --embed-subs"; if ["$4" != "" ]; then SUDA="--sub-lang $4"; else echo "First enter language for embed"; fi; fi
+    if [ "$3" == "c" ]; then UDO="--recode-video mkv --embed-subs"; if ["$4" != "" ]; then SUDA="--sub-lang $4"; else echo "First enter language for embed"; fi; fi
     if [ "$3" == "a" ]; then PRRO='-f bestaudio'; elif [ "$3" == "h" ]; then PRRO='-f bestvideo+bestaudio'; fi; if [ "$5" != "" ]; then LAN="--playlist-start $5"; fi
     if [ "$3" == "sd" ]; then
      echo "Getting VInfo"; youtube-dl -F -a lst-$2.txt >> .dlf 2>&1
