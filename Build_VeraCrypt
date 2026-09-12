@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# Entorno Android SDK / NDK
+export ANDROID_HOME=$HOME/android-sdk
+export NDK=$ANDROID_HOME/ndk/30.0.16248370
+export TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/linux-x86_64
+export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$TOOLCHAIN/bin:$PATH
+
+# Configurar target de API y compiladores
+# Definir el objetivo (Arquitectura + API)
+#export TARGET=aarch64-linux-android
+export TARGET=armv7a-linux-androideabi
+export API=27
+
+# Redirigir los compiladores de C y C++ al NDK
+export CC=$TOOLCHAIN/bin/${TARGET}${API}-clang
+export CXX=$TOOLCHAIN/bin/${TARGET}${API}-clang++
+
+# Redirigir las herramientas de enlazado y empaquetado
+export AR=$TOOLCHAIN/bin/llvm-ar
+export AS=$TOOLCHAIN/bin/llvm-as
+export LD=$TOOLCHAIN/bin/ld.lld
+export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
+export STRIP=$TOOLCHAIN/bin/llvm-strip
+
+# Banderas críticas: exponer unistd.h en zlib y silenciar el bloqueo de C23/C99
+export CPPFLAGS="-DHAVE_UNISTD_H -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE"
+export CFLAGS="-fPIC $CPPFLAGS -Wno-implicit-function-declaration -Wno-deprecated-non-prototype"
+export CXXFLAGS="-fPIC -stdlib=libc++ $CPPFLAGS"
+
+export SOURCE_DATE_EPOCH=$(date +%s)
+
+# Directorio de instalación local
+#export PREFIX="$HOME/.sources/fuse"
+#rm -rf "$PREFIX"
+#mkdir -p "$PREFIX"
+
+#cd $HOME/.sources/libfuse
+# Banderas C necesarias para Android (evitar errores de funciones implícitas)
+#export CFLAGS="-fPIC -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -Wno-implicit-function-declaration"
+
+# 1. Generar los scripts del sistema de construcción si falta 'configure'
+#[ -f configure ] || ./makeconf.sh
+#make distclean || make clean || true
+
+#./configure --host=arm-linux-androideabi --prefix="$PREFIX" --enable-static --disable-shared --disable-util --disable-example --disable-mtab CC="$CC" AR="$AR" RANLIB="$RANLIB"
+
+# 3. Aplicar parche Bionic si no está presente
+#grep -q "PTHREAD_CANCEL_ENABLE" lib/fuse_loop_mt.c || sed '|#include <pthread.h>|a #ifndef PTHREAD_CANCEL_ENABLE\n#define PTHREAD_CANCEL_ENABLE 0\n#define PTHREAD_CANCEL_DISABLE 1\n#define pthread_setcancelstate(state, oldstate) (0)\n#endif' -i lib/fuse_loop_mt.c
+
+# 5. Compilar e instalar
+#make -j$(nproc)
+#make install
+
+#cd $HOME/.sources/wxWidgets
+
+# Limpieza estricta de configuraciones fallidas previas
+#if [ -f Makefile ]; then
+#    make distclean || rm -f Makefile
+#fi
+#rm -rf config.cache config.status
+
+# Host canonical para armeabi-v7a
+#./configure --host=arm-linux-androideabi --disable-gui --disable-shared --enable-unicode --with-zlib=sys --with-regex=builtin --with-expat=builtin CC="$CC" CXX="$CXX" AR="$AR" RANLIB="$RANLIB"
+
+#make -j$(nproc)
+
+# Navegar al directorio de VeraCrypt
+cd $HOME/.sources/veracrypt/src
+
+# Configurar rutas y flags específicos para Android NDK
+export WX_ROOT=$HOME/.sources/wxWidgets
+export WX_CONFIG=$WX_ROOT/wx-config
+
+# Rutas de dependencias compiladas previamente
+export FUSE_PREFIX="$HOME/.sources/fuse"
+export PKG_CONFIG_PATH="$FUSE_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
+export PKG_CONFIG="/usr/bin/pkg-config"
+
+# Limpiar compilaciones anteriores en VeraCrypt
+make clean || true
+
+# Flags para VeraCrypt bajo Bionic (Android)
+#export VC_CFLAGS="-fPIC -D_FILE_OFFSET_BITS=64 -DTC_UNIX -DTC_LINUX -I$FUSE_PREFIX/include"
+#export VC_CXXFLAGS="-fPIC -stdlib=libc++ -D_FILE_OFFSET_BITS=64 -DTC_UNIX -DTC_LINUX -I$FUSE_PREFIX/include"
+#export VC_LDFLAGS="-static-libstdc++ -L$FUSE_PREFIX/lib"
+
+# Inyectar flags de Android mediante las variables reservadas por VeraCrypt
+export TC_EXTRA_CFLAGS="-fPIC -D_FILE_OFFSET_BITS=64 -DTC_UNIX -DTC_LINUX -I$FUSE_PREFIX/include"
+export TC_EXTRA_CXXFLAGS="-fPIC -stdlib=libc++ -D_FILE_OFFSET_BITS=64 -DTC_UNIX -DTC_LINUX -I$FUSE_PREFIX/include"
+export TC_EXTRA_LFLAGS="-static-libstdc++ -L$FUSE_PREFIX/lib $HOME/.sources/veracrypt/src/fuse_stub.o"
+
+# Lanzar la compilación CLI (NOGUI) para arquitectura ARM sin ensamblador x86/x64
+make NOGUI=1 CPU_ARCH=arm NOASM=1 CC="$CC" CXX="$CXX" AR="$AR" RANLIB="$RANLIB" WX_BUILD_DIR="$WX_ROOT" WX_CONFIG="$WX_CONFIG" -j$(nproc)
+# Compilación CLI (sin GUI) para ARMv7
+#make NOGUI=1 CPU_ARCH=arm NOASM=1 FUSE_FOUND=1 VC_FUSE_PACKAGE=fuse VC_FUSE_VERSION=2 CC="$CC" CXX="$CXX" AR="$AR" RANLIB="$RANLIB" WX_BUILD_DIR="$WX_ROOT" WX_CONFIG="$WX_CONFIG" -j$(nproc)
