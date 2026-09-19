@@ -1,0 +1,167 @@
+#!/bin/bash
+NC_DNSN='nextcloud.devsaco.com'			# Nextcloud domain name server
+NC_WADM='webadmin@devsaco.com'			# Nextcloud e-mail web master
+DB_PSWD='DATABASEPASSWORD'			# Nextcloud database user secure password
+SVR_LIP='192.168.1.4'				# IP local for nextcloud server
+HARP_KEY='SECUREKEY'				# Most secure harp appapi password
+
+SE_ACFG="/etc/apache2/sites-enabled/"		# Apache VirtualHost configuration files enabled
+SA_ACFG="/etc/apache2/sites-available"		# Apache VirtualHost configuration files available
+NC_HOME="$HOME/nextcloud"			# Files required for installation
+NC_WDIR="/var/www/nextcloud"			# Main directory of the Nextcloud server on Apache
+NC_ACFG="nextcloud.conf"			# Nextcloud Apache VirtualHost configuration file
+NC_DATA="/nextcloud"				# Nextcloud DATA directory
+
+SSL_CDIR="/etc/letsencrypt/live/$NC_DNSN"	# SSL certbot main directory
+SSL_CERT="$SSL_CDIR/fullchain.pem"			# SSL cert file
+SSL_PKEY="$SSL_CDIR/privkey.pem"		# SSL privkey file
+
+# Install basic utilities
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+
+# Add the repository to Apt sources:
+sudo tee /etc/apt/sources.list.d/docker.sources << EOF > /dev/null
+Types: deb
+Architectures: $(dpkg --print-architecture)
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+sudo add-apt-repository ppa:ondrej/php -y
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Install main server tools and utilities
+sudo apt-get update
+sudo snap install certbot --classic
+sudo apt-get install -y 7zip-* apache2 code-brand containerd.io coolwsd docker-buildx-plugin docker-ce docker-ce-cli docker-compose-plugin libapache2-mod-fcgid libapache2-mod-php8.5 libmagickcore-6.q16-* mariadb-server php8.5-{apcu,cli,curl,dom,exif,fpm,ftp,gd,gmp,imagick,imap,intl,ldap,mbstring,mysql,phar,posix,redis,smbclient,sysvsem,xml,yaml,zip} redis-server
+sudo a2dismod mpm_prefork
+sudo a2enmod dir env headers mime mpm_event proxy_connect proxy_fcgi proxy_http proxy_wstunnel rewrite setenvif ssl
+sudo a2enconf php8.5-fpm
+sudo usermod -a -G redis www-data
+
+# Adding nextcloud database and user
+sudo mariadb -e "CREATE DATABASE IF NOT EXISTS nextcloud; CREATE USER IF NOT EXISTS 'nextcloud'@'localhost' IDENTIFIED BY '"$DB_PSWD"'; GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'localhost'; FLUSH PRIVILEGES"
+
+# Fix issues on php
+sudo sed 's|upload_max_filesize = 2M|upload_max_filesize = 512M|;s|memory_limit = 128M|memory_limit = 1024M|;s|;opcache.interned_strings_buffer=8|opcache.interned_strings_buffer = 64|' -i /etc/php/8.5/apache2/php.ini
+sudo sed 's|upload_max_filesize = 2M|upload_max_filesize = 512M|;s|memory_limit = 128M|memory_limit = 1024M|;s|;opcache.interned_strings_buffer=8|opcache.interned_strings_buffer = 64|' -i /etc/php/8.5/fpm/php.ini
+sudo sed 's|;opcache.interned_strings_buffer=8|opcache.interned_strings_buffer = 64|' -i /etc/php/8.5/cli/php.ini
+sudo tee /etc/php/8.5/cli/conf.d/20-apcu.ini << EOF > /dev/null
+apc.enable_cli=1
+extension=apcu.so
+EOF
+
+# Install nextcloud server and plugins
+sudo mkdir -p $NC_DATA $NC_HOME/harp $NC_WDIR
+cd $NC_HOME/harp
+tee compose.yaml << EOF > /dev/null
+services:
+  harp:
+    image: ghcr.io/nextcloud/nextcloud-appapi-harp:release
+    container_name: harp
+    hostname: harp
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $SSL_CDIR:/certs
+    environment:
+      - HP_SHARED_KEY=$HARP_KEY
+      - HP_EXAPPS_ADDRESS=$SVR_LIP:8780
+      - HP_CERT_FILE=/certs/fullchain.pem
+      - HP_KEY_FILE=/certs/privkey.pem
+      - NC_INSTANCE_URL=https://$NC_DNSN
+EOF
+
+sudo docker compose up -d
+
+cd ..
+
+wget -c "https://download.nextcloud.com/server/releases/latest.tar.bz2.sha512"
+wget -c "https://download.nextcloud.com/server/releases/latest.tar.bz2.asc"
+wget -c "https://download.nextcloud.com/server/releases/latest.tar.bz2"
+wget -c "https://nextcloud.com/nextcloud.asc"
+
+gpg --import nextcloud.asc
+gpg --verify latest.tar.bz2.asc latest.tar.bz2 | grep "Good signature"
+sha512sum -c latest.tar.bz2.sha512 | grep "OK"
+
+sudo tar -xaf latest.tar.bz2 -C /var/www
+sudo chown -R www-data:www-data $NC_WDIR $NC_DATA
+sudo tee $SA_ACFG/$NC_ACFG << EOF > /dev/null
+<VirtualHost *:80>
+	ServerName $NC_DNSN
+
+	ServerAdmin $NC_WADM
+	DocumentRoot $NC_WDIR
+	<Directory $NC_WDIR/>
+		Require all granted
+		AllowOverride All
+		Options FollowSymLinks MultiViews
+
+		<IfModule mod_dav.c>
+			Dav off
+		</IfModule>
+	</Directory>
+
+	ErrorLog \${APACHE_LOG_DIR}/nc_error.log
+	CustomLog \${APACHE_LOG_DIR}/nc_access.log combined
+
+</VirtualHost>
+
+<VirtualHost *:443>
+	ServerName $NC_DNSN
+
+	ServerAdmin $NC_WADM
+	DocumentRoot $NC_WDIR
+
+	<FilesMatch \.php$>
+		SetHandler "proxy:unix:/run/php/php8.5-fpm.sock|fcgi://localhost"
+	</FilesMatch>
+
+	<Directory $NC_WDIR/>
+		Require all granted
+		AllowOverride All
+		Options FollowSymLinks MultiViews
+
+		<IfModule mod_headers.c>
+			Header always set Strict-Transport-Security "max-age=15552000; includeSubDomains"
+		</IfModule>
+
+		<IfModule mod_dav.c>
+			Dav off
+		</IfModule>
+	</Directory>
+
+	SSLEngine on
+
+	SSLCertificateFile      $SSL_CERT
+	SSLCertificateKeyFile   $SSL_PKEY
+
+	ProxyPass /exapps/ http://$SVR_LIP:8780/exapps/
+	ProxyPassReverse /exapps/ http://$SVR_LIP:8780/exapps/
+	ProxyTimeout 1800
+
+	ErrorLog \${APACHE_LOG_DIR}/nc_error.log
+	CustomLog \${APACHE_LOG_DIR}/nc_access.log combined
+
+</VirtualHost>
+EOF
+
+cd
+
+# Disable default site and enable nextcloud site on apache2
+if [ -e "$SE_ACFG/000-default.conf" ]; then sudo a2dissite 000-default.conf; fi
+if [ ! -e "$SE_ACFG/$NC_ACFG" ]; then sudo a2ensite nextcloud.conf; fi
+
+sudo rm /var/log/apache2/{access,error}.log
+sudo rm /var/log/php8.5fpm.log
+
+sudo systemctl restart apache2
+sudo systemctl restart php8.5-fpm
+#sudo systemctl status apache2
+#sudo systemctl status php8.5-fpm

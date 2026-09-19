@@ -10,7 +10,7 @@ mirror_sums="$mirrorcache/sums"
 mirror_urls="$mirrorcache/urls"
 ### varString
 head_string="$(for ((a=0;a<=79;a++)); do printf "#"; done; printf "\n")"
-limit_rate='10M'
+limit_rate='80M'
 ### Body start
 for mirror in $(cat $mirror_list | grep -v 'clean ' | sed 's|[^\]*://||g;s| |:sc:|g;s|/:sc:\.|:sc:|g;s|/:sc:/|:sc:/|g'); do
  wurl=$(echo $mirror | sed 's|:sc:[^\]*||')

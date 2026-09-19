@@ -3,14 +3,16 @@ K_FHEAD='~~~~~~~~~~~~~~~~~~~~~~'
 K_SHEAD='######################'
 A='openssl rand -base64 3'
 if [ "$1" == "" -a "$2" == "" ]; then
- echo "Usage: randx.sh -[e|m|n] (options)"
- echo "Examples: 
-        ./randx.sh -e			# Extract all compressed files (Debug for massive splitted)
-        ./randx.sh -m (dest_dir)	# Move recursive subdir files to a new dir
-        ./randx.sh -n [option]
-          Option
-           e                     # Change all name files to a random_name.original_ext
-           c                     # Change all name files to a random_name.random_ext"
+ echo "Usage: randx -[e|m|n] (options)"
+ echo "Examples:
+
+	randx -e		# Extract all compressed files (Debug for massive splitted)
+	randx -m (dest_dir)	# Move recursive subdir files to a new dir
+	randx -n [option]
+
+	     Option
+		e		# Change all name files to a random_name.original_ext
+		c		# Change all name files to a random_name.random_ext"
 else
  for T in $(find -type f | sort | grep -v '\.\/Audio\|\.\/Data\|\.\/Video\|\.passwd\|randx.sh\|\.reglog' | wc -l); do
   rang_x=( $(seq -s _ -w $T | sed 's|_| |g') ); for M in $(find -type f | sort | grep -v '\.\/Audio\|\.\/Data\|\.\/Video\|\.passwd\|\.remuxer\|\.reglog\|\.ass\|\.srt' | sed "s|\./||;s| |:scs:|g"); do
