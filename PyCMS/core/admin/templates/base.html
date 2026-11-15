@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PyCMS Admin{% endblock %}</title>
+    <style>
+        /* Variables de colores al estilo WordPress */
+        :root {
+            --wp-admin-bg: #f0f0f1;
+            --wp-sidebar-bg: #1d2327;
+            --wp-topbar-bg: #1d2327;
+            --wp-text-light: #f0f0f1;
+            --wp-text-dark: #3c434a;
+            --wp-accent: #2271b1;
+            --wp-hover: #2c3338;
+            --sidebar-width: 160px;
+            --topbar-height: 32px;
+        }
+
+        body { 
+            margin: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--wp-admin-bg); 
+            color: var(--wp-text-dark); 
+        }
+        
+        /* Barra Superior */
+        .admin-topbar { 
+            position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-height); 
+            background: var(--wp-topbar-bg); color: var(--wp-text-light); 
+            display: flex; justify-content: space-between; align-items: center; 
+            z-index: 9999; font-size: 13px; 
+        }
+        .admin-topbar a { 
+            color: var(--wp-text-light); text-decoration: none; padding: 0 15px; 
+            height: 100%; display: inline-flex; align-items: center; 
+        }
+        .admin-topbar a:hover { background: rgba(255,255,255,0.1); }
+        
+        /* Panel Lateral */
+        .admin-sidebar { 
+            position: fixed; top: var(--topbar-height); left: 0; bottom: 0; 
+            width: var(--sidebar-width); background: var(--wp-sidebar-bg); 
+            z-index: 9990; overflow-y: auto; 
+        }
+        .admin-sidebar ul { list-style: none; padding: 0; margin: 12px 0; }
+        .admin-sidebar a { 
+            display: block; padding: 10px 15px; color: var(--wp-text-light); 
+            text-decoration: none; font-size: 14px; 
+        }
+        .admin-sidebar a:hover { 
+            background: var(--wp-hover); color: #72aee6; 
+        }
+        
+        /* Área de Contenido Principal */
+        .admin-main { 
+            margin-left: var(--sidebar-width); 
+            margin-top: var(--topbar-height); 
+            padding: 20px; 
+            min-height: calc(100vh - var(--topbar-height)); 
+            box-sizing: border-box; 
+        }
+
+        /* Estilos heredados para los bloques de contenido */
+        .wrap { max-width: 1000px; }
+        h1 { margin-top: 0; font-size: 24px; font-weight: 400; }
+        .btn { text-decoration: none; padding: 6px 12px; border-radius: 3px; font-size: 13px; cursor: pointer; border: 1px solid transparent; }
+        .btn-primary { background: var(--wp-accent); color: #fff; }
+        .btn-primary:hover { background: #135e96; }
+        table { width: 100%; background: #fff; border: 1px solid #c3c4c7; border-collapse: collapse; }
+        th, td { padding: 10px 15px; text-align: left; border-bottom: 1px solid #c3c4c7; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <!-- Barra Superior Fija -->
+    <div class="admin-topbar">
+        <div>
+            <a href="/" target="_blank">🏠 Mi PyCMS</a>
+            <a href="/admin/post-new">➕ Añadir</a>
+        </div>
+        <div>
+            <a href="#">Hola, Admin</a>
+        </div>
+    </div>
+
+    <!-- Panel Lateral Fijo -->
+    <div class="admin-sidebar">
+        <ul>
+            <li><a href="/admin/posts">📌 Entradas</a></li>
+            <li><a href="/admin/post-new">📝 Añadir nueva</a></li>
+        </ul>
+    </div>
+
+    <!-- Contenedor Dinámico -->
+    <div class="admin-main">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

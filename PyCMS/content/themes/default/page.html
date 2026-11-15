@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} | Página</title>
+
+    <!-- Inyección de plugins en el HEAD -->
+    {{ wp_head() | safe }}
+
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px; background-color: #f8f9fa; color: #333; }
+        .page-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .meta { color: #7f8c8d; font-size: 0.9em; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- Indicador visual de que estamos usando page.html -->
+        <span style="background: #3498db; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8em;">Plantilla: page.html</span>
+        
+        <h1>{{ post.title }}</h1>
+        <div class="meta">
+            Última actualización: {{ post.updated_at[:10] }} | Autor: {{ post.meta.autor }}
+        </div>
+        
+        <div class="content" style="margin-top: 30px; font-size: 1.1em; line-height: 1.8;">
+            {{ post.content | safe }}
+        </div>
+    </div>
+
+    <!-- Inyección de plugins en el FOOTER -->
+    {{ wp_footer() | safe }}
+
+</body>
+</html>

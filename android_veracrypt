@@ -1,20 +1,80 @@
 #!/bin/bash
 
+# Preparar el entorno de compilación
+mkdir -p $HOME/.sources
+cd $HOME/.sources
+git clone https://github.com/veracrypt/VeraCrypt.git
+cd VeraCrypt/src
+
+# Instalar dependencias
+pkg i make cmake pkg-config patch git curl wget unzip tar yasm libtool libtool-bin gettext
+
 # Entorno Android SDK / NDK
-export ANDROID_HOME=$HOME/android-sdk
-export NDK=$ANDROID_HOME/ndk/30.0.16248370
-export TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/linux-x86_64
-export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$TOOLCHAIN/bin:$PATH
+export ANDROID_SDK_ROOT="$HOME/android-sdk"
+export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/26.3.11579264"
+export TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+
+export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$TOOLCHAIN/bin:$PATH"
 
 # Configurar target de API y compiladores
 # Definir el objetivo (Arquitectura + API)
-#export TARGET=aarch64-linux-android
-export TARGET=armv7a-linux-androideabi
-export API=27
+# Elige la arquitectura destino:
+# Para ARM64 (64-bit): aarch64-linux-android
+# Para ARMv7 (32-bit): armv7a-linux-androideabi
+#export TARGET_ARCH="aarch64-linux-android"
+export TARGET_ARCH="armv7a-linux-androideabi"
+export API_LEVEL="27"
+
+for tool in \
+    "$TOOLCHAIN/bin/${TARGET_ARCH}${API_LEVEL}-clang" \
+    "$TOOLCHAIN/bin/${TARGET_ARCH}${API_LEVEL}-clang++" \
+    "$TOOLCHAIN/bin/llvm-ar" \
+    "$TOOLCHAIN/bin/llvm-ranlib" \
+    "$TOOLCHAIN/bin/llvm-strip"; do
+    if [ -x "$tool" ]; then
+        echo "[OK] Toolchain bin: $(basename $tool)"
+    else
+        echo "[ERROR] No se encontró o no es ejecutable: $tool"
+    fi
+done
+
+# Define dónde instalaste tus dependencias compiladas con el NDK
+export DEPS_PREFIX="${DEPS_PREFIX:-$HOME/.local}"
+
+echo "--- Comprobando wx-config ---"
+if [ -x "$DEPS_PREFIX/bin/wx-config" ]; then
+    echo "[OK] wx-config encontrado. Flags de librerías:"
+    "$DEPS_PREFIX/bin/wx-config" --libs base
+else
+    echo "[ERROR] No se encontró wx-config en $DEPS_PREFIX/bin"
+fi
+
+echo "--- Comprobando libfuse.a y cabeceras ---"
+if [ -f "$DEPS_PREFIX/lib/libfuse.a" ] && [ -f "$DEPS_PREFIX/include/fuse/fuse.h" ]; then
+    echo "[OK] libfuse.a y fuse.h encontrados."
+    # Verificar que el archivo .o dentro de libfuse.a es ARM64/ARM y no x86_64
+    "$TOOLCHAIN/bin/llvm-readelf" -h "$DEPS_PREFIX/lib/libfuse.a" | grep -E "Machine:" | head -n 1
+else
+    echo "[ERROR] Falta libfuse.a o fuse.h en $DEPS_PREFIX"
+fi
+
+# Ejemplo de función para validar parches en tu script
+check_patch() {
+    local target_dir="$1"
+    local patch_file="$2"
+    if patch -d "$target_dir" -p1 --dry-run --silent < "$patch_file"; then
+        echo "[LISTO PARA APLICAR] $(basename $patch_file)"
+    elif patch -d "$target_dir" -p1 -R --dry-run --silent < "$patch_file"; then
+        echo "[OK - YA APLICADO] $(basename $patch_file)"
+    else
+        echo "[ERROR DE CONFLICTO] El parche $(basename $patch_file) no coincide con el código."
+    fi
+}
+
 
 # Redirigir los compiladores de C y C++ al NDK
-export CC=$TOOLCHAIN/bin/${TARGET}${API}-clang
-export CXX=$TOOLCHAIN/bin/${TARGET}${API}-clang++
+export CC=$TOOLCHAIN/bin/${TARGET_ARCH}${API_LEVEL}-clang
+export CXX=$TOOLCHAIN/bin/${TARGET_ARCH}${API_LEVEL}-clang++
 
 # Redirigir las herramientas de enlazado y empaquetado
 export AR=$TOOLCHAIN/bin/llvm-ar
@@ -29,15 +89,6 @@ export CFLAGS="-fPIC $CPPFLAGS -Wno-implicit-function-declaration -Wno-deprecate
 export CXXFLAGS="-fPIC -stdlib=libc++ $CPPFLAGS"
 
 export SOURCE_DATE_EPOCH=$(date +%s)
-
-# Directorio de instalación local
-#export PREFIX="$HOME/.sources/fuse"
-#rm -rf "$PREFIX"
-#mkdir -p "$PREFIX"
-
-#cd $HOME/.sources/libfuse
-# Banderas C necesarias para Android (evitar errores de funciones implícitas)
-#export CFLAGS="-fPIC -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -Wno-implicit-function-declaration"
 
 # 1. Generar los scripts del sistema de construcción si falta 'configure'
 #[ -f configure ] || ./makeconf.sh

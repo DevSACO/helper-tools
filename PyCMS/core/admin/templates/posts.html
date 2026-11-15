@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Entradas | PyCMS Admin{% endblock %}
+
+{% block content %}
+<div class="wrap">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>Entradas</h1>
+        <a href="/admin/post-create" class="btn btn-primary">Añadir nueva</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Slug</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for post in posts %}
+            <tr>
+                <td>
+                    <strong>{{ post.title }}</strong>
+                    <div style="font-size: 13px; margin-top: 5px;">
+                        <a href="/admin/post-edit/{{ post.id }}" style="color: #2271b1; text-decoration: none;">Editar</a> | 
+                        <a href="/{{ post.slug }}" target="_blank" style="color: #007017; text-decoration: none;">Ver</a> | 
+                        <form method="POST" action="/admin/post-delete/{{ post.id }}" style="display:inline;" onsubmit="return confirm('¿Borrar permanente?');">
+                            <button type="submit" style="background:none; border:none; color:#d63638; cursor:pointer; text-decoration:underline; padding:0;">Borrar</button>
+                        </form>
+                    </div>
+                </td>
+                <td>/{{ post.slug }}</td>
+                <td>{{ post.post_type }}</td>
+                <td>{{ post.created_at[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">No hay entradas publicadas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

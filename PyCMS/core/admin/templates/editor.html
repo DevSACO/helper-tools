@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Añadir Entrada | Editor de Bloques{% endblock %}
+
+{% block content %}
+<!-- 1. Todos los scripts necesarios de Editor.js -->
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/simple-image@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/embed@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/raw@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/editorjs-html@3.4.0/build/edjsHTML.browser.js"></script>
+
+<style>
+    .admin-main { padding: 0 !important; background: #fff; }
+    .gutenberg-toolbar {
+        position: sticky; top: var(--topbar-height); z-index: 900;
+        background: #fff; border-bottom: 1px solid #ddd;
+        padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .toolbar-controls { display: flex; gap: 15px; align-items: center; }
+    .toolbar-controls input, .toolbar-controls select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+    .gutenberg-canvas { max-width: 840px; margin: 40px auto; padding: 0 20px; }
+    .gutenberg-title {
+        width: 100%; border: none; font-size: 2.5em; font-weight: 700;
+        color: #111; margin-bottom: 20px; outline: none; padding-left: 0; background: transparent;
+    }
+    .gutenberg-title::placeholder { color: #ccc; }
+    
+    /* 🔥 Expande el área interna interactiva de Editor.js */
+    #editorjs { min-height: 60vh; cursor: text; }
+    .codex-editor, .codex-editor__redactor { min-height: 60vh !important; padding-bottom: 50px; }
+    
+    .ce-block__content, .ce-toolbar__content { max-width: 100% !important; }
+    .codex-editor { font-size: 1.1em; line-height: 1.6; }
+</style>
+
+<form id="block-form" method="POST" action="/admin/post-create">
+    <div class="gutenberg-toolbar">
+        <div><a href="/admin/posts" style="color: #666; text-decoration: none;">← Volver</a></div>
+        <div class="toolbar-controls">
+            <input type="text" name="slug" required placeholder="URL: mi-nueva-entrada">
+            <select name="post_type">
+                <option value="post">Entrada</option>
+                <option value="page">Página</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Publicar</button>
+        </div>
+    </div>
+
+    <div class="gutenberg-canvas">
+        <input type="text" name="title" class="gutenberg-title" required placeholder="Añade un título" autocomplete="off">
+        <div id="editorjs"></div>
+    </div>
+    
+    <textarea id="hidden-content" name="content" style="display: none;"></textarea>
+    <textarea id="hidden-json" name="blocks_json" style="display: none;"></textarea>
+</form>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const editor = new EditorJS({
+        holder: 'editorjs',
+        placeholder: 'Haz clic aquí, luego pulsa TABULADOR o el botón + para añadir bloques...',
+        defaultBlock: 'paragraph', // Fuerza a que siempre exista un bloque inicial
+        tools: { 
+            header: Header, 
+            list: List,
+            image: SimpleImage,
+            quote: Quote,
+            delimiter: Delimiter,
+            raw: RawTool,
+            embed: { class: Embed, config: { services: { youtube: true, vimeo: true } } }
+        }
+    });
+
+    // 🔥 Si haces clic en el espacio blanco, fuerza al editor a activarse
+    document.getElementById('editorjs').addEventListener('click', () => {
+        editor.focus(true);
+    });
+
+    const edjsParser = edjsHTML({
+        embed: function(block) {
+            return `<iframe width="100%" height="400" src="${block.data.embed}" frameborder="0" allowfullscreen></iframe>`;
+        },
+        raw: function(block) {
+            return block.data.html; 
+        }
+    });
+
+    document.getElementById('block-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        editor.save().then((outputData) => {
+            document.getElementById('hidden-json').value = JSON.stringify(outputData);
+            const htmlArray = edjsParser.parse(outputData);
+            document.getElementById('hidden-content').value = htmlArray.join('\n');
+            this.submit();
+        }).catch((error) => {
+            console.error('Error al guardar:', error);
+            alert('Hubo un problema al procesar los bloques.');
+        });
+    });
+});
+</script>
+{% endblock %}

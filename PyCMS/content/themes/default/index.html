@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} | PyCMS</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+        header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+        .meta { color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Mi PyCMS</h1>
+    </header>
+
+    <main>
+        <article>
+            <h2>{{ post.title }}</h2>
+            <div class="meta">
+                <p>Publicado el: {{ post.created_at[:10] }} | Tipo: {{ post.post_type }}</p>
+                <!-- Accedemos al campo JSONB "meta" de PostgreSQL directamente -->
+                <p>Autor: {{ post.meta.autor }} (v{{ post.meta.version }})</p>
+            </div>
+            
+            <hr>
+            
+            <div class="content">
+                <!-- 'safe' le dice a Jinja que confíe en el HTML que venga de la base de datos -->
+                {{ post.content | safe }}
+            </div>
+        </article>
+    </main>
+</body>
+</html>
