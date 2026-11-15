@@ -1,28 +1,33 @@
 # core/models.py
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Any
-from sqlalchemy import String, Text, DateTime, Index
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import String, Text, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column
-from core.db import Base # Importamos la base
+from sqlalchemy.sql import func
+from .db import Base
 
 class Post(Base):
+    """
+    Modelo principal para el contenido de PyCMS.
+    Maneja Entradas, Páginas y Custom Post Types.
+    """
     __tablename__ = "posts"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[str] = mapped_column(String(200), unique=True, index=True)
-    title: Mapped[str] = mapped_column(String(255))
-    content: Mapped[str] = mapped_column(Text)
-    post_type: Mapped[str] = mapped_column(String(50), default="post", index=True) 
-    status: Mapped[str] = mapped_column(String(20), default="publish", index=True)
+    # Tipado estricto con Mapped y mapped_column (SQLAlchemy 2.0+)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    slug: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # Campo JSONB para metadatos sin límite de estructura
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default='{}')
+    # page, post, portfolio, etc.
+    post_type: Mapped[str] = mapped_column(String(50), default="post", index=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    # publish, draft, trash, etc.
+    status: Mapped[str] = mapped_column(String(50), default="draft", index=True)
 
-    __table_args__ = (
-        Index('idx_post_type_status', 'post_type', 'status'),
-        Index('idx_post_meta_gin', 'meta', postgresql_using='gin'),
-    )
+    # Campo JSONB nativo para flexibilidad total de metadatos (como en WordPress)
+    meta: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    # Fechas automáticas manejadas por el motor de BD
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
