@@ -1,0 +1,13 @@
+{
+    "startup_msg": "🚀 Arrancando PyCMS...",
+    "shutdown_msg": "🛑 Apagando PyCMS...",
+    "db_ready": "✅ Tablas de base de datos verificadas/creadas.",
+    "menu_posts": "Entradas",
+    "menu_add_new": "Añadir nueva"
+    "plugins_discovered": "🔍 Se descubrieron {count} plugins en el directorio.",
+    "plugin_loaded": "[OK] Plugin activado: {name}",
+    "plugin_failed": "[ERROR] Falló la carga del módulo '{name}': {error}",
+    "plugin_not_found": "Intento de activar plugin inexistente: {name}",
+    "dir_created": "📁 Directorio creado automáticamente: {path}",
+    "dir_verified": "Directorio verificado: {path}"
+}

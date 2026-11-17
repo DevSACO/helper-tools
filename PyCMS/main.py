@@ -1,15 +1,22 @@
 # main.py
-import os
-from core.admin import admin_router
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 
-# Importamos las herramientas del core que construimos antes
-from core.plugins import load_all_plugins
+from core.admin import admin_router
+from core.plugins import plugin_manager # Usando nuestro nuevo gestor
 from core.crud import get_post_by_slug
+from core.i18n import current_lang
 from core.hooks import hooks
 from core.db import engine, Base
+from core.logger import setup_logging, get_logger
+from core.setup import ensure_directories_exist # Importamos la nueva función
+
+# Configuramos el logging antes de hacer cualquier otra cosa
+setup_logging()
+
+# Obtenemos un logger para el archivo principal
+logger = get_logger("Core")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,7 +24,10 @@ async def lifespan(app: FastAPI):
     Se ejecuta una sola vez al arrancar el servidor (y al apagarlo).
     Es el lugar perfecto para cargar los plugins en memoria y conectar servicios.
     """
-    print("🚀 Arrancando PyCMS...")
+    # Reemplazamos print por logger.info
+    logger.info("🚀 Arrancando PyCMS...")
+    # Aseguramos que la estructura de carpetas existe
+    ensure_directories_exist()
 
     # Crear las tablas en PostgreSQL si no existen
     async with engine.begin() as conn:
@@ -25,25 +35,62 @@ async def lifespan(app: FastAPI):
         print("✅ Tablas de base de datos verificadas/creadas.")
 
     # Cargamos todos los plugins activos. Ellos registrarán sus funciones en los hooks.
-    load_all_plugins()
+    plugin_manager.activate_all()
 
     # Ejecutamos un hook de inicio, por si algún plugin necesita hacer algo al arrancar
     hooks.do_action('cms_init')
 
     yield # Aquí el CMS se queda corriendo recibiendo peticiones
 
-    print("🛑 Apagando PyCMS...")
+    logger.info("🛑 Apagando PyCMS...")
     # Hook de apagado (ej. para cerrar conexiones personalizadas de plugins)
     hooks.do_action('cms_shutdown')
 
 # Inicializamos el framework
 app = FastAPI(title="PyCMS", lifespan=lifespan)
 
+@app.middleware("http")
+async def language_middleware(request: Request, call_next):
+    """
+    Este middleware se ejecuta en CADA petición que recibe PyCMS.
+    Detecta el idioma del visitante y lo guarda en su contexto local.
+    """
+    # 1. Estrategia 1: Parámetro en la URL (ej: misitio.com/?lang=en)
+    lang = request.query_params.get("lang")
+    
+    # 2. Estrategia 2: Cabecera del navegador (Accept-Language)
+    if not lang:
+        accept_lang = request.headers.get("Accept-Language", "")
+        if accept_lang:
+            # Los navegadores envían algo como: "es-ES,es;q=0.9,en;q=0.8"
+            # Extraemos el primer idioma principal ("es")
+            lang = accept_lang.split(",")[0].split("-")[0]
+    
+    # 3. Si no detectamos nada, usamos español por defecto
+    if not lang:
+        lang = "es"
+        
+    # Establecemos el idioma para ESTA petición asíncrona
+    token = current_lang.set(lang)
+    
+    # Procesamos la petición (FastAPI hace su magia aquí, llamando a rutas, Jinja, etc.)
+    response = await call_next(request)
+    
+    # Limpiamos el contexto al terminar (Buena práctica de memoria)
+    current_lang.reset(token)
+    
+    return response
+
 # --- INCLUIMOS EL PANEL DE ADMINISTRACIÓN ---
 app.include_router(admin_router)
 
 # Configuramos el motor de plantillas apuntando a nuestra carpeta de temas
 templates = Jinja2Templates(directory="content/themes")
+admin_templates = Jinja2Templates(directory="core/admin/templates")
+
+# Inyectamos la función _() para que esté disponible en CUALQUIER plantilla HTML
+templates.env.globals["_"] = _
+admin_templates.env.globals["_"] = _
 
 # Inyectar funciones globales al estilo WordPress ---
 templates.env.globals["wp_head"] = lambda: hooks.do_action_to_string("wp_head")
